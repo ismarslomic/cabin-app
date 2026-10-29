@@ -117,6 +117,37 @@ docker run --rm -p 8080:8080 cabin-app     # http://localhost:8080
 
 The Pi only needs `docker-compose.yml`, not this repository: it never builds anything and always pulls the image from `ghcr.io/ismarslomic/cabin-app` (`pull_policy: always`). On the Pi: `docker network create cloudflared` (once), then `docker compose pull && docker compose up -d`, optionally pinning a version with `CABIN_APP_VERSION=1`.
 
+## Releasing the Docker image
+
+`.github/workflows/docker.yml` builds the image on a **native arm64 runner** (`ubuntu-24.04-arm`, no emulation, since the Pi 5 is arm64) and scans it with [Trivy](https://trivy.dev/):
+
+- **Pull requests and pushes to `main`:** build and scan only. Nothing is published, so the Pi can never pick up a half-finished change.
+- **A GitHub Release is published:** build, scan, then push to `ghcr.io/ismarslomic/cabin-app`. The scan runs _before_ the push, so a vulnerable image never reaches the registry.
+- **The scan fails the build** on any HIGH or CRITICAL vulnerability that has a fix available (OS packages and libraries). Unfixed ones are ignored because nobody can act on them. Read the table in the log of the failed step. The usual fix is to update the base image (see _Updating dependencies_); do not lower the severity or add ignores without a comment explaining why. The Trivy action is pinned to a commit rather than a tag, because it is a third-party security tool and tags can be moved.
+- **The final image is patched at build time.** The pinned nginx base image is a snapshot, so the `Dockerfile` runs `apk upgrade` to install Alpine security fixes released since, and removes `curl`/`libcurl`, which nothing uses (the health check uses `wget`). The first scan found fixable HIGH/CRITICAL issues in `brotli-libs` and `curl` that way. The base image stays pinned by digest; only OS fixes are pulled in, which is why two builds of the same commit can differ slightly.
+
+### Tags
+
+The tag is the release tag without the `v`, plus the shorter forms, so the Pi can follow a major version without ever getting a breaking change:
+
+| Release                     | Image tags                                                                       |
+| --------------------------- | -------------------------------------------------------------------------------- |
+| `v1.4.2`                    | `1.4.2`, `1.4`, `1`, `latest`                                                    |
+| `v0.1.0`                    | `0.1.0`, `0.1`, `latest` (there is no `0` tag: `0.x` makes no stability promise) |
+| `v1.5.0-rc.1` (pre-release) | `1.5.0-rc.1` only                                                                |
+
+### Making a release
+
+```sh
+gh release create v0.2.0 --target main --title v0.2.0 --generate-notes
+```
+
+(or use the GitHub UI; add `--prerelease` for a release candidate). The tag must be `v` plus a semantic version. Releases created by a workflow with the default `GITHUB_TOKEN` do not trigger other workflows, so create them yourself or with a personal access token. Versioning: patch for fixes, minor for features, major for anything that needs action on the Pi (a changed compose file, network or tunnel setup). Stay on `0.x` until the first real feature runs on the Pi, then release `1.0.0`.
+
+On the Pi, set `CABIN_APP_VERSION` to `1` to follow every `1.x.y` release, or to an exact version to pin it. To roll back, set an older exact version and run `docker compose up -d` again.
+
+The image must be **public** in GHCR for the Pi to pull it without logging in. A new package can start out private; if `docker pull` says `unauthorized`, open the package's settings on GitHub (profile > Packages > `cabin-app` > Package settings) and change the visibility to public. This is a one-time change.
+
 ## Updating dependencies
 
 Do updates by hand like this (Dependabot may open PRs for the same things later; the checks are identical). One kind of update per commit, so a regression is easy to bisect and revert.
@@ -127,7 +158,7 @@ Do updates by hand like this (Dependabot may open PRs for the same things later;
 2. **Update.** Patch and minor versions within the `^` ranges: `pnpm update`. Major versions: `pnpm update --interactive --latest` (pick packages, ranges in `package.json` are rewritten), or name them: `pnpm update <package> <package> --latest`.
 3. **Read the release notes** of anything that jumped a major version, before running the checks.
 4. **Run `pnpm check`** (format check, lint, build with type-check, tests). If it only complains about formatting after an oxfmt update, run `pnpm format` and commit that on its own, as a formatting-only commit.
-5. **Look at the app** if a UI, PWA or build package changed: `pnpm build && pnpm preview`, then open it and check the home page in light and dark mode, and in DevTools > Application that the service worker activates and the app still works when _Offline_ is ticked. CI does not build the Docker image yet, so for Framework7, Vite or PWA updates also build and run it as described under _Docker base images_, step 4.
+5. **Look at the app** if a UI, PWA or build package changed: `pnpm build && pnpm preview`, then open it and check the home page in light and dark mode, and in DevTools > Application that the service worker activates and the app still works when _Offline_ is ticked. The Docker workflow builds and scans the image on every push but does not run it, so for Framework7, Vite or PWA updates also build and run it as described under _Docker base images_, step 4.
 6. **Commit `package.json` and `pnpm-lock.yaml` together.**
 
 Packages that must move together, or need extra care:
@@ -179,7 +210,7 @@ Both base images in the `Dockerfile` are pinned as `name:version@sha256:digest`.
 
    Then open `http://localhost:8080` and confirm in DevTools that there are no CSP errors in the console, the service worker activates and the app works with _Offline_ ticked. For an nginx update, read its release notes for changes that affect `nginx/default.conf`.
 
-5. **Run `pnpm check`**, commit the `Dockerfile` (and `.nvmrc`) and push; CI checks that they agree.
+5. **Run `pnpm check`**, commit the `Dockerfile` (and `.nvmrc`) and push. CI checks that the Node versions agree, and the Docker workflow scans the new image with Trivy. If the new base already contains the fixes that the `apk upgrade` line installs, leave that line in anyway: it keeps releases current.
 6. To go back, revert the commit: the old digest is still in git history.
 
 ### GitHub Actions
