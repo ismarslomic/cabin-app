@@ -117,6 +117,75 @@ docker run --rm -p 8080:8080 cabin-app     # http://localhost:8080
 
 On the Pi: `docker network create cloudflared` (once), then `docker compose pull && docker compose up -d`, optionally pinning a version with `CABIN_APP_VERSION=1`.
 
+## Updating dependencies
+
+Do updates by hand like this (Dependabot may open PRs for the same things later; the checks are identical). One kind of update per commit, so a regression is easy to bisect and revert.
+
+### npm packages
+
+1. **See what is outdated:** `pnpm outdated`. An empty result means nothing newer is on offer. Very new releases can be held back by pnpm's supply-chain settings (see `minimumReleaseAge` in the [pnpm settings](https://pnpm.io/settings)): while writing this, lucide-react 1.64.0, published about 16 hours earlier, was not offered while 1.63.0 was. If an expected version is missing, check its publish date with `pnpm view <package> time.<version>` and try again later.
+2. **Update.** Patch and minor versions within the `^` ranges: `pnpm update`. Major versions: `pnpm update --interactive --latest` (pick packages, ranges in `package.json` are rewritten), or name them: `pnpm update <package> <package> --latest`.
+3. **Read the release notes** of anything that jumped a major version, before running the checks.
+4. **Run `pnpm check`** (format check, lint, build with type-check, tests). If it only complains about formatting after an oxfmt update, run `pnpm format` and commit that on its own, as a formatting-only commit.
+5. **Look at the app** if a UI, PWA or build package changed: `pnpm build && pnpm preview`, then open it and check the home page in light and dark mode, and in DevTools > Application that the service worker activates and the app still works when _Offline_ is ticked. CI does not build the Docker image yet, so for Framework7, Vite or PWA updates also build and run it as described under _Docker base images_, step 4.
+6. **Commit `package.json` and `pnpm-lock.yaml` together.**
+
+Packages that must move together, or need extra care:
+
+| Package(s)                                                  | Rule                                                                                                                                                                                                                                                                                                                                                                                                     |
+| ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `framework7` + `framework7-react`                           | Always the same version. Read the [Framework7 release notes](https://github.com/framework7io/framework7/releases) and migration guide: parameter names, CSS classes and the `framework7/lite-bundle` import path have changed between majors. After updating, check the UI visually (iOS and Material look, dark mode), that routing and the toast still work, and the bundle sizes in the build output. |
+| `vitest` + `@vitest/coverage-v8`                            | Exactly the same version, or Vitest refuses to run coverage. `pnpm update vitest @vitest/coverage-v8 --latest`. Check the peer ranges of `jsdom` and Vite (`pnpm view vitest peerDependencies`).                                                                                                                                                                                                         |
+| `oxlint` + `oxlint-tsgolint` + `oxfmt`                      | Update together. A new oxlint can need a newer `oxlint-tsgolint` (and the TypeScript Go port it follows); a new oxfmt can reformat files, and `README.md` and `package.json` count too.                                                                                                                                                                                                                  |
+| `vite`, `@vitejs/plugin-react`, `vite-plugin-pwa`, `vitest` | Before a Vite major, check that the others declare support: `pnpm view vite-plugin-pwa peerDependencies` and the same for `vitest`. Update Vite last.                                                                                                                                                                                                                                                    |
+| `vite-plugin-pwa` + `workbox-window`                        | `workbox-window` must satisfy the plugin's peer range (`pnpm view vite-plugin-pwa peerDependencies`). After updating, check the `precache` line in the build output and the offline test above.                                                                                                                                                                                                          |
+| `@vite-pwa/assets-generator`                                | Only matters when you regenerate icons (`pnpm generate-pwa-assets`); if the output changes, review the PNGs before committing.                                                                                                                                                                                                                                                                           |
+| `react`, `react-dom`, `@types/react`, `@types/react-dom`    | Together. `framework7-react` and Testing Library declare which React versions they support.                                                                                                                                                                                                                                                                                                              |
+| `@testing-library/react`                                    | Needs `@testing-library/dom` as a peer: keep both.                                                                                                                                                                                                                                                                                                                                                       |
+| `typescript`                                                | A major update can change `tsc -b` results and the type-aware lint rules; run `pnpm check` and read the errors rather than silencing them.                                                                                                                                                                                                                                                               |
+| `@types/node`                                               | Follows the Node version, not the newest release: see Node below.                                                                                                                                                                                                                                                                                                                                        |
+| `lucide-react`                                              | Icons can be renamed or removed in a major; the build and type-check catch every import.                                                                                                                                                                                                                                                                                                                 |
+
+### pnpm
+
+Change `packageManager` in `package.json` to `pnpm@<version>`. CI (`pnpm/action-setup`) and the Dockerfile read it from there. Install the same version locally with `npm install -g pnpm@<version>` (under the right Node version, since global packages are per Node version), then `pnpm install` and `pnpm check`. Commit any lockfile change with it.
+
+### Node
+
+Node is pinned in three places that must agree, and CI fails if `.nvmrc` and the `Dockerfile` differ:
+
+1. `nvm install <version>`, then write that exact version in `.nvmrc`.
+2. Update the Node base image in the `Dockerfile`: tag and digest together (see below), using the same version.
+3. For a new **major**, also update `@types/node` (`pnpm add -D @types/node@^<major>`), `engines.node` in `package.json`, and the Node mentions in this README. Check each tool still declares support (`pnpm view <package> engines`).
+4. `nvm use`, reinstall pnpm for this Node (`npm install -g pnpm`), then `pnpm install` and `pnpm check`. Build and run the Docker image too.
+
+### Docker base images (version and digest)
+
+Both base images in the `Dockerfile` are pinned as `name:version@sha256:digest`. Docker uses the digest and ignores the tag when both are present, so **change the tag and the digest together**, otherwise the tag no longer tells the truth about what runs.
+
+1. **Pick the new version tag**, e.g. `node:26.13.1-alpine` or `nginxinc/nginx-unprivileged:1.31.8-alpine` (Docker Hub tags page of the image). Stay on the same major (and, for nginx, the same minor line unless you have read the release notes).
+2. **Get its digest:** `docker buildx imagetools inspect node:26.13.1-alpine` and copy the top `Digest:` line. It is the digest of the multi-architecture index, which is the one to use (it also works on the Pi's arm64). `docker pull <image>` prints the same `Digest:`.
+3. **Edit the `FROM` line**: new tag and new digest. For Node, also update `.nvmrc` to the same version.
+4. **Build and run it** with the same flags as `compose.yaml`, and look at what nginx serves:
+
+   ```sh
+   docker build -t cabin-app:local .
+   docker run -d --name cabin-app-test -p 8080:8080 --read-only --tmpfs /tmp --cap-drop ALL --security-opt no-new-privileges cabin-app:local
+   docker ps --filter name=cabin-app-test        # wait until it says (healthy)
+   curl -sI http://localhost:8080/               # CSP, no-cache and security headers present, Server: nginx without a version
+   curl -sI http://localhost:8080/sw.js          # Cache-Control: no-cache
+   docker rm -f cabin-app-test
+   ```
+
+   Then open `http://localhost:8080` and confirm in DevTools that there are no CSP errors in the console, the service worker activates and the app works with _Offline_ ticked. For an nginx update, read its release notes for changes that affect `nginx/default.conf`.
+
+5. **Run `pnpm check`**, commit the `Dockerfile` (and `.nvmrc`) and push; CI checks that they agree.
+6. To go back, revert the commit: the old digest is still in git history.
+
+### GitHub Actions
+
+The versions in `.github/workflows/*.yml` (`actions/checkout@v7` and so on) are major tags. To update, change the major, read that action's release notes for breaking input changes, push and watch the run succeed.
+
 ## Editor setup (IntelliJ IDEA)
 
 1. Install the [Oxc plugin](https://plugins.jetbrains.com/plugin/27061-oxc) (Settings > Plugins > Marketplace > "Oxc"). It runs the project's own `oxfmt` and `oxlint`, so run `pnpm install` first.

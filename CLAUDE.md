@@ -48,6 +48,12 @@ Group by feature, not by technical layer. Full rules in `README.md` ("Folder str
 - Authentication is Cloudflare Access in front of the tunnel (not in this repo). All HTTP requests the app makes (`fetch`) must go through one shared helper (create it in `shared/lib/` with the first API call) that sends `X-Requested-With: XMLHttpRequest`, so an expired Access session gives a `401` to handle instead of a login redirect. This is a request header set in code; nginx cannot add it.
 - After changing the Dockerfile or nginx config, build and run the image and check headers with `curl -I`; the PWA offline behaviour and CSP violations are what break silently.
 
+## Updating dependencies
+
+- Follow the "Updating dependencies" chapter in `README.md`; do not improvise. Key rules: `framework7` and `framework7-react` always the same version; `vitest` and `@vitest/coverage-v8` exactly the same version; `oxlint`, `oxlint-tsgolint` and `oxfmt` together; `@types/node` follows the Node version.
+- Docker base images: change the tag and the digest together (`docker buildx imagetools inspect <image:tag>`), and keep the Node version equal to `.nvmrc`.
+- Never run `pnpm update --latest` on everything at once. Update one group, run `pnpm check`, commit.
+
 ## Icons
 
 - Use `lucide-react` only; import each icon by name (`import { House } from 'lucide-react'`). Never `import *` or look icons up by string, which breaks tree-shaking.
