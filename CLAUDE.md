@@ -5,6 +5,7 @@ This file overrides the global Kotlin/Gradle instructions: this is a **pnpm** pr
 
 ## Commands
 
+- Node 26 (`.nvmrc`). Run `nvm use` in a new shell first (`source ~/.nvm/nvm.sh && nvm use`).
 - Package manager: `pnpm` only. Never npm or yarn.
 - `pnpm dev`, `pnpm build` (includes type-check), `pnpm typecheck`, `pnpm lint` (type-aware via oxlint-tsgolint).
 - Handle promises: await them, or mark with `void`. `no-floating-promises` is an error.
