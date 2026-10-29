@@ -10,6 +10,8 @@ export default defineConfig({
     VitePWA({
       // The user decides when to update, so open forms are never reloaded away.
       registerType: 'prompt',
+      // Behind Cloudflare Access the manifest request needs the session cookie, or it is redirected to the login page.
+      useCredentials: true,
       includeAssets: ['favicon.svg', 'favicon.ico', 'apple-touch-icon-180x180.png'],
       manifest: {
         name: 'Slomic Smarthytte',

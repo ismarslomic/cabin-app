@@ -34,6 +34,7 @@ Group by feature, not by technical layer. Full rules in `README.md` ("Folder str
 
 - Config in `vite.config.ts` (`VitePWA`), update toast in `src/app/UpdatePrompt.tsx`. Update strategy is `prompt`: never auto-reload the page.
 - Icons are generated: edit `public/favicon.svg`, run `pnpm generate-pwa-assets`, commit the PNGs. Keep `theme_color` in the manifest equal to the `theme-color` meta in `index.html`.
+- Keep `useCredentials: true` in `VitePWA(...)`: the app sits behind Cloudflare Access, which would otherwise redirect the cookie-less manifest request to the login page.
 - The service worker only exists in a production build. Test PWA changes with `pnpm build && pnpm preview`, not `pnpm dev`.
 - Mock `virtual:pwa-register/react` in tests that need update/offline states.
 
