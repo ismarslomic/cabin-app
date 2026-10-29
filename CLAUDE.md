@@ -40,7 +40,7 @@ Group by feature, not by technical layer. Full rules in `README.md` ("Folder str
 
 ## Docker
 
-- `Dockerfile` (build with Node, serve with `nginx-unprivileged` on 8080), `nginx/`, `docker-compose.yml`. Target is a Raspberry Pi 5 (`linux/arm64` only). TLS is done by a Cloudflare Tunnel container on the shared `cloudflared` Docker network; the app has no host port.
+- `Dockerfile` (build with Node, serve with `nginx-unprivileged` on 8080), `nginx/`, `docker-compose.yml`. Target is a Raspberry Pi 5 (`linux/arm64` only). TLS is done by a Cloudflare Tunnel container on the external Docker network `cabin-visits-shared`; the app has no host port. `docker-compose.yml` is the exact file deployed on the Pi (pinned image tag, Diun labels): after a release, bump the image tag in it.
 - Base images are pinned by exact version and digest. Never change them to a floating tag like `node:26`. To bump, pull the new tag, copy the digest, change tag and digest together. The Node version in the `Dockerfile` must equal `.nvmrc` exactly (a CI step checks it); bump both together. There is no corepack in the Node image; pnpm is installed from `packageManager`.
 - Do not weaken the nginx caching rules: `sw.js`, `workbox-*.js`, `manifest.webmanifest` and HTML must stay `no-cache`; only `/assets/` is immutable (and without `always`, so errors are not cached). A new nginx `location` that uses `add_header` must include `security-headers.conf`.
 - The Content-Security-Policy in `nginx/security-headers.conf` allows only the app's own origin. A feature that calls an external API or loads external images or fonts must add that origin to `connect-src`, `img-src` or `font-src`, or the browser will silently block it.

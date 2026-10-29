@@ -104,7 +104,7 @@ The app is deployed as a container on a Raspberry Pi 5 (`linux/arm64`, a single 
   - nginx runs as a non-root user, hides its version (`server_tokens off`) and sends security headers from `nginx/security-headers.conf`: `nosniff`, `Referrer-Policy`, `X-Frame-Options`, a `Permissions-Policy` that denies camera, microphone, location, payment and USB (to use one, allow it for the app's own origin by changing that one directive, e.g. `geolocation=(self)`, instead of removing the header), and a **Content-Security-Policy** that only allows the app's own origin (`style-src` also allows inline styles because Framework7 sets them). **When the app starts calling an external API or loading images or fonts from another origin, add that origin to `connect-src`, `img-src` or `font-src`**, otherwise the browser blocks it. Every nginx `location` that uses `add_header` must include the snippet, because `add_header` is not inherited.
   - `docker-compose.yml` runs the container with a read-only filesystem, all capabilities dropped, `no-new-privileges` and `unless-stopped`.
   - HSTS is not set here: the container only speaks HTTP, and HTTPS is handled by Cloudflare, so enable HSTS in the Cloudflare dashboard if you want it.
-- **No host port.** The container is only reachable from other containers on the Docker network `cloudflared`, where the Cloudflare Tunnel container runs. In the tunnel's public hostname settings, set the service to `http://cabin-app:8080`. Create the network once with `docker network create cloudflared`, or set `name:` in `docker-compose.yml` to the network your tunnel already uses (and attach `cloudflared` to it).
+- **No host port.** The container is only reachable from other containers on the external Docker network `cabin-visits-shared`, which the Cloudflare Tunnel container is also on. In the tunnel's public hostname settings, set the service to `http://cabin-app:8080` (Docker resolves the container name on that network). The network must already exist; `docker-compose.yml` does not create it.
 - **HTTPS** is terminated by the Cloudflare Tunnel. The service worker and PWA install only work over HTTPS (or `localhost`), so always open the app through the tunnel address.
 - **Authentication** is [Cloudflare Access](https://developers.cloudflare.com/cloudflare-one/policies/access/) in front of the tunnel hostname, configured in Cloudflare, not in this repo. The app itself has no login, so never expose the container another way.
 
@@ -115,7 +115,7 @@ docker build -t cabin-app .
 docker run --rm -p 8080:8080 cabin-app     # http://localhost:8080
 ```
 
-The Pi only needs `docker-compose.yml`, not this repository: it never builds anything and always pulls the image from `ghcr.io/ismarslomic/cabin-app` (`pull_policy: always`). On the Pi: `docker network create cloudflared` (once), then `docker compose pull && docker compose up -d`, optionally pinning a version with `CABIN_APP_VERSION=1`.
+`docker-compose.yml` is the file that runs on the Pi, copied as it is; the Pi does not need this repository. It never builds anything, it pulls `ghcr.io/ismarslomic/cabin-app` from the registry. It also carries [Diun](https://crazymax.dev/diun/) labels, so Diun notifies you when a new release `X.Y.Z` is published. To deploy a release, change the image tag in the file (in the repo and on the Pi) and run `docker compose pull && docker compose up -d`.
 
 ## Releasing the Docker image
 
@@ -128,7 +128,7 @@ The Pi only needs `docker-compose.yml`, not this repository: it never builds any
 
 ### Tags
 
-The tag is the release tag without the `v`, plus the shorter forms, so the Pi can follow a major version without ever getting a breaking change:
+The tag is the release tag without the `v`, plus shorter forms. The compose file uses the exact one; the shorter ones exist so you can follow a minor or major version without ever getting a breaking change:
 
 | Release                     | Image tags                                                                       |
 | --------------------------- | -------------------------------------------------------------------------------- |
@@ -144,7 +144,7 @@ gh release create v0.2.0 --target main --title v0.2.0 --generate-notes
 
 (or use the GitHub UI; add `--prerelease` for a release candidate). The tag must be `v` plus a semantic version. Releases created by a workflow with the default `GITHUB_TOKEN` do not trigger other workflows, so create them yourself or with a personal access token. Versioning: patch for fixes, minor for features, major for anything that needs action on the Pi (a changed compose file, network or tunnel setup). Stay on `0.x` until the first real feature runs on the Pi, then release `1.0.0`.
 
-On the Pi, set `CABIN_APP_VERSION` to `1` to follow every `1.x.y` release, or to an exact version to pin it. To roll back, set an older exact version and run `docker compose up -d` again.
+The Pi pins an **exact** version in `docker-compose.yml`, so nothing changes until you decide it should. To roll back, put the older version in the image tag and run `docker compose up -d` again. If you would rather follow every release of a major version automatically, use the `1` tag instead of `1.4.2`. Diun reports only exact `X.Y.Z` tags either way.
 
 The image is **public** in GHCR, so the Pi pulls it without logging in (checked for `v0.1.0` with an anonymous token). If `docker pull` ever says `unauthorized`, open the package's settings on GitHub (profile > Packages > `cabin-app` > Package settings) and check the visibility.
 

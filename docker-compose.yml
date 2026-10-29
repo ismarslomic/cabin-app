@@ -1,18 +1,16 @@
-# Runs the app on the Raspberry Pi. TLS is terminated by the Cloudflare Tunnel (a container that
-# shares the "cloudflared" Docker network with this one); the app itself is not published on a host port.
-# On the Pi: `docker compose pull && docker compose up -d` (pin a version with CABIN_APP_VERSION=1).
-# In the Cloudflare Tunnel, point the public hostname's service at http://cabin-app:8080.
+# Runs the app on the Raspberry Pi: this is the file that is deployed there, copied as it is.
+# TLS is terminated by the Cloudflare Tunnel, a container on the shared "cabin-visits-shared" Docker
+# network; the app is not published on a host port. In the tunnel's public hostname settings, point
+# the service at http://cabin-app:8080.
+# To deploy a release: change the image tag below, then `docker compose pull && docker compose up -d`.
+# Diun (labels below) tells you when a new release is published.
 services:
   cabin-app:
-    image: ghcr.io/ismarslomic/cabin-app:${CABIN_APP_VERSION:-latest}
-    # Always take the image from the registry; this file is for the Pi and never builds anything.
-    pull_policy: always
     container_name: cabin-app
-    restart: unless-stopped
+    image: ghcr.io/ismarslomic/cabin-app:0.1.0
     expose:
       - '8080'
-    networks:
-      - cloudflared
+    restart: unless-stopped
     read_only: true
     tmpfs:
       - /tmp
@@ -20,9 +18,16 @@ services:
       - ALL
     security_opt:
       - no-new-privileges:true
+    labels:
+      - 'diun.enable=true'
+      - 'diun.watch_repo=true'
+      - 'diun.include_tags=^(\d+\.\d+\.\d+)$$'
+      - 'diun.sort_tags=semver'
+      - 'diun.max_tags=10'
+    networks:
+      cabin-visits-shared:
 
 networks:
-  cloudflared:
-    # Shared with the cloudflared container. Create it once with `docker network create cloudflared`,
-    # or add `name: <existing network>` here to use the network your tunnel already runs on.
+  cabin-visits-shared:
+    # Already exists: it is shared with the Cloudflare Tunnel container (and the other cabin apps).
     external: true
