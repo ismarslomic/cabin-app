@@ -1,6 +1,7 @@
 # Slomic Smarthytte
 
 [![CI](https://github.com/ismarslomic/cabin-app/actions/workflows/ci.yml/badge.svg)](https://github.com/ismarslomic/cabin-app/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/ismarslomic/cabin-app/graph/badge.svg)](https://codecov.io/gh/ismarslomic/cabin-app)
 
 Slomic Smarthytte: a mobile-first PWA for the cabin. The UI language is Norwegian Bokmål (`nb`). Built with React, TypeScript, Vite and Framework7.
 
@@ -89,7 +90,7 @@ pnpm dev
 
 ## Continuous integration
 
-`.github/workflows/ci.yml` runs on every pull request and on pushes to `main`: install with the frozen lockfile, format check, lint, build (with type-check) and tests with coverage. It is the same as `pnpm check`, with coverage on. Node comes from `.nvmrc` and the pnpm version from `packageManager` in `package.json`, so CI and your machine use the same versions. Coverage settings are in the `test.coverage` block of `vite.config.ts`: Vitest 5 only reports files that tests import unless `include` is set, and it excludes nothing by default, so tests, test setup and `main.tsx` are excluded explicitly.
+`.github/workflows/ci.yml` runs on every pull request and on pushes to `main`: install with the frozen lockfile, format check, lint, build (with type-check) and tests with coverage. It is the same as `pnpm check`, with coverage on, followed by an upload of `coverage/lcov.info` to [Codecov](https://codecov.io/gh/ismarslomic/cabin-app) (the `CODECOV_TOKEN` repository secret; a failed upload fails the build). Node comes from `.nvmrc` and the pnpm version from `packageManager` in `package.json`, so CI and your machine use the same versions. `codecov.yml` sets the pull request checks: total coverage may drop at most 2 points, and the lines changed in a PR are compared against the project average. Coverage settings are in the `test.coverage` block of `vite.config.ts`: Vitest 5 only reports files that tests import unless `include` is set, and it excludes nothing by default, so tests, test setup and `main.tsx` are excluded explicitly.
 
 ## Editor setup (IntelliJ IDEA)
 

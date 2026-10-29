@@ -1,0 +1,15 @@
+coverage:
+  status:
+    project:
+      default:
+        # Fail the check only if total coverage drops by more than 2 points.
+        target: auto
+        threshold: 2%
+    patch:
+      default:
+        # Coverage of the lines changed in a pull request.
+        target: auto
+
+comment:
+  layout: 'diff, files'
+  require_changes: true

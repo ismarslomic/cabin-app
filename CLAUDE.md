@@ -10,7 +10,7 @@ This file overrides the global Kotlin/Gradle instructions: this is a **pnpm** pr
 - `pnpm dev`, `pnpm test` (Vitest, once) / `pnpm test:watch`, `pnpm typecheck`, `pnpm lint` (type-aware via oxlint-tsgolint), `pnpm build` (includes type-check).
 - Handle promises: await them, or mark with `void`. `no-floating-promises` is an error.
 - `pnpm format` writes formatting (oxfmt); `pnpm format:check` verifies it. Do not hand-format.
-- `pnpm test:coverage` shows coverage (`coverage/` is git-ignored). CI (`.github/workflows/ci.yml`) runs the same steps as `pnpm check` plus coverage.
+- `pnpm test:coverage` shows coverage (`coverage/` is git-ignored). CI (`.github/workflows/ci.yml`) runs the same steps as `pnpm check` plus coverage, and uploads it to Codecov (`codecov.yml` holds the PR check rules).
 - **`pnpm check` before every commit** (format check, lint, build, tests). Run `pnpm format` first if it reports formatting. Fix failures before committing.
 
 ## Structure
