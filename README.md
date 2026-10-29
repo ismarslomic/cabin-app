@@ -1,5 +1,7 @@
 # Slomic Smarthytte
 
+[![CI](https://github.com/ismarslomic/cabin-app/actions/workflows/ci.yml/badge.svg)](https://github.com/ismarslomic/cabin-app/actions/workflows/ci.yml)
+
 Slomic Smarthytte: a mobile-first PWA for the cabin. The UI language is Norwegian Bokmål (`nb`). Built with React, TypeScript, Vite and Framework7.
 
 Agents working in this repo should read `CLAUDE.md`; this README explains what each tool is for and why.
@@ -22,6 +24,7 @@ pnpm dev
 | `pnpm build`               | Type-check (`tsc -b`) and build                                                                      |
 | `pnpm test`                | Run all tests once (Vitest)                                                                          |
 | `pnpm test:watch`          | Run tests in watch mode                                                                              |
+| `pnpm test:coverage`       | Run tests with a coverage report (`coverage/`)                                                       |
 | `pnpm generate-pwa-assets` | Regenerate PWA icons from `public/favicon.svg`                                                       |
 | `pnpm typecheck`           | Type-check only (`tsc -b`)                                                                           |
 | `pnpm lint`                | Run oxlint (type-aware)                                                                              |
@@ -84,6 +87,10 @@ pnpm dev
 - Render Framework7 trees inside `StrictMode` like `main.tsx` does (see `App.test.tsx`). Framework7 pages render asynchronously, so use `findBy*` queries.
 - `src/test/setup.test.tsx` is a smoke test of the tooling itself. Keep it so a broken setup is obvious.
 
+## Continuous integration
+
+`.github/workflows/ci.yml` runs on every pull request and on pushes to `main`: install with the frozen lockfile, format check, lint, build (with type-check) and tests with coverage. It is the same as `pnpm check`, with coverage on. Node comes from `.nvmrc` and the pnpm version from `packageManager` in `package.json`, so CI and your machine use the same versions. Coverage settings are in the `test.coverage` block of `vite.config.ts`: Vitest 5 only reports files that tests import unless `include` is set, and it excludes nothing by default, so tests, test setup and `main.tsx` are excluded explicitly.
+
 ## Editor setup (IntelliJ IDEA)
 
 1. Install the [Oxc plugin](https://plugins.jetbrains.com/plugin/27061-oxc) (Settings > Plugins > Marketplace > "Oxc"). It runs the project's own `oxfmt` and `oxlint`, so run `pnpm install` first.
@@ -123,4 +130,3 @@ The `@/` alias maps to `src/` (`vite.config.ts` and `tsconfig.app.json`), e.g. `
 - **Viewport:** the Framework7 docs suggest `maximum-scale=1, user-scalable=no`; we keep pinch-zoom enabled for accessibility and use `width=device-width, initial-scale=1, viewport-fit=cover`.
 - **Routing:** the router uses in-memory history. Real URLs (`browserHistory`) need the server and service worker to fall back to `index.html`; the generated worker already does (`navigateFallback`), so it can be switched on when deep links matter.
 - **No `robots.txt`:** the PWA docs list one among the minimal requirements, but this is a private family app that does not need to be crawled.
-- **No CI yet:** `pnpm check` is what CI should run once it is added.
