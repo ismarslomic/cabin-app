@@ -7,10 +7,10 @@ This file overrides the global Kotlin/Gradle instructions: this is a **pnpm** pr
 
 - Node 26 (`.nvmrc`). Run `nvm use` in a new shell first (`source ~/.nvm/nvm.sh && nvm use`).
 - Package manager: `pnpm` only. Never npm or yarn.
-- `pnpm dev`, `pnpm build` (includes type-check), `pnpm test` (Vitest, once) / `pnpm test:watch`, `pnpm typecheck`, `pnpm lint` (type-aware via oxlint-tsgolint).
+- `pnpm dev`, `pnpm test` (Vitest, once) / `pnpm test:watch`, `pnpm typecheck`, `pnpm lint` (type-aware via oxlint-tsgolint), `pnpm build` (includes type-check).
 - Handle promises: await them, or mark with `void`. `no-floating-promises` is an error.
 - `pnpm format` writes formatting (oxfmt); `pnpm format:check` verifies it. Do not hand-format.
-- Before every commit, and at the end of every step, run all of: `pnpm format`, `pnpm lint`, `pnpm build`, `pnpm test`. Fix failures before committing.
+- **`pnpm check` before every commit** (format check, lint, build, tests). Run `pnpm format` first if it reports formatting. Fix failures before committing.
 
 ## Structure
 
@@ -41,9 +41,17 @@ Group by feature, not by technical layer. Full rules in `README.md` ("Folder str
 - Use `lucide-react` only; import each icon by name (`import { House } from 'lucide-react'`). Never `import *` or look icons up by string, which breaks tree-shaking.
 - No hard-coded colors (icons use `currentColor`). Icon-only controls need an `aria-label` on the control.
 
+## Adding a feature
+
+1. Create `src/features/<name>/` with `pages/`, `components/`, `hooks/`, `api/` only as needed.
+2. Pages: `<Page>` at the root, Framework7 components inside, Norwegian UI text, `lucide-react` icons.
+3. Export the routes from `features/<name>/index.ts` and add them to `src/app/routes.ts`.
+4. Write tests next to the code. Run `pnpm check`.
+5. Update `README.md` if the feature adds a tool, a convention or a gotcha.
+
 ## Workflow
 
-- The stack is added one step at a time: configure, test, document, commit.
-- Each step updates `README.md` (Stack table, Scripts, Decisions) and this file in the same commit.
+- Small, focused commits; end commit messages with the Co-Authored-By line. Never force push.
 - Match existing style. Do not reformat files you did not touch.
-- Use the latest documented setup for each library; check its docs, not memory.
+- Check the library's current docs before configuring it; do not rely on memory.
+- New dependency: add it with `pnpm add`, document what it is for in the `README.md` Stack table and any rules in this file, in the same commit.

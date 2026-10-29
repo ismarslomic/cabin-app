@@ -1,8 +1,8 @@
 # Slomic Smarthytte
 
-Slomic Smarthytte: a mobile-first PWA for the cabin. The UI language is Norwegian Bokmål (`nb`). Built with React, TypeScript and Vite.
+Slomic Smarthytte: a mobile-first PWA for the cabin. The UI language is Norwegian Bokmål (`nb`). Built with React, TypeScript, Vite and Framework7.
 
-> The stack is added one step at a time. Each step is documented below when it lands.
+Agents working in this repo should read `CLAUDE.md`; this README explains what each tool is for and why.
 
 ## Getting started
 
@@ -16,28 +16,37 @@ pnpm dev
 
 ## Scripts
 
-| Script                     | What it does                                   |
-| -------------------------- | ---------------------------------------------- |
-| `pnpm dev`                 | Start the Vite dev server                      |
-| `pnpm build`               | Type-check (`tsc -b`) and build                |
-| `pnpm test`                | Run all tests once (Vitest)                    |
-| `pnpm test:watch`          | Run tests in watch mode                        |
-| `pnpm generate-pwa-assets` | Regenerate PWA icons from `public/favicon.svg` |
-| `pnpm typecheck`           | Type-check only (`tsc -b`)                     |
-| `pnpm lint`                | Run oxlint (type-aware)                        |
-| `pnpm format`              | Format all files with oxfmt                    |
-| `pnpm format:check`        | Check formatting without writing               |
-| `pnpm preview`             | Serve the production build locally             |
+| Script                     | What it does                                                                                         |
+| -------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `pnpm dev`                 | Start the Vite dev server                                                                            |
+| `pnpm build`               | Type-check (`tsc -b`) and build                                                                      |
+| `pnpm test`                | Run all tests once (Vitest)                                                                          |
+| `pnpm test:watch`          | Run tests in watch mode                                                                              |
+| `pnpm generate-pwa-assets` | Regenerate PWA icons from `public/favicon.svg`                                                       |
+| `pnpm typecheck`           | Type-check only (`tsc -b`)                                                                           |
+| `pnpm lint`                | Run oxlint (type-aware)                                                                              |
+| `pnpm format`              | Format all files with oxfmt                                                                          |
+| `pnpm format:check`        | Check formatting without writing                                                                     |
+| `pnpm check`               | Everything CI would run: format check, lint, build (with type-check), tests. Run before every commit |
+| `pnpm preview`             | Serve the production build locally                                                                   |
 
 ## Stack
 
-| Tool                  | Why                                                                                               | Config                                  |
-| --------------------- | ------------------------------------------------------------------------------------------------- | --------------------------------------- |
-| React 19 + TypeScript | UI and types                                                                                      | `tsconfig*.json`                        |
-| Vite                  | Dev server and bundler                                                                            | `vite.config.ts`                        |
-| oxlint                | Linting                                                                                           | `.oxlintrc.json`                        |
-| oxfmt                 | Formatting (Prettier-compatible, Rust)                                                            | `.oxfmtrc.json`                         |
-| oxlint-tsgolint       | Type-aware lint rules for oxlint (e.g. `no-floating-promises`), powered by the TypeScript Go port | `options.typeAware` in `.oxlintrc.json` |
+| Tool                             | Why                                                                                               | Config                                        |
+| -------------------------------- | ------------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| React 19 + TypeScript            | UI and types                                                                                      | `tsconfig*.json`                              |
+| Vite                             | Dev server and bundler                                                                            | `vite.config.ts`                              |
+| Framework7 + framework7-react    | Mobile UI components (iOS/Material look), router, page transitions                                | `src/app/f7-setup.ts`, `src/app/f7-params.ts` |
+| lucide-react                     | Icons as React SVG components, tree-shaken per icon                                               | imported where used                           |
+| vite-plugin-pwa + workbox-window | Web app manifest, service worker (Workbox `generateSW`), offline support, update prompt           | `VitePWA(...)` in `vite.config.ts`            |
+| @vite-pwa/assets-generator       | Generates all PWA icons from one SVG                                                              | `pwa-assets.config.ts`                        |
+| Vitest + jsdom                   | Test runner (shares `vite.config.ts`) and simulated browser DOM                                   | `test` block in `vite.config.ts`              |
+| @testing-library/react + `dom`   | Render components and query them like a user would (`dom` is a required peer dependency)          | `src/test/setup.ts`                           |
+| @testing-library/jest-dom        | DOM matchers such as `toBeVisible()` and `toBeInTheDocument()`                                    | `src/test/setup.ts`                           |
+| @testing-library/user-event      | Realistic user interaction (`await user.click(...)`)                                              | n/a                                           |
+| oxlint                           | Linting                                                                                           | `.oxlintrc.json`                              |
+| oxlint-tsgolint                  | Type-aware lint rules for oxlint (e.g. `no-floating-promises`), powered by the TypeScript Go port | `options.typeAware` in `.oxlintrc.json`       |
+| oxfmt                            | Formatting (Prettier-compatible, Rust)                                                            | `.oxfmtrc.json`                               |
 
 ## Framework7
 
@@ -107,8 +116,8 @@ The `@/` alias maps to `src/` (`vite.config.ts` and `tsconfig.app.json`), e.g. `
 
 ## Decisions and gotchas
 
-- **Step 0:** removed the Vite template demo, added the folder skeleton and the `@/` alias.
-- **Language:** app name is "Slomic Smarthytte" and the language is Norwegian Bokmål (`lang="nb"` in `index.html`). Use `nb` for the PWA manifest and the Framework7 locale when they are added.
+- **Folder skeleton:** the Vite template demo was removed and the feature-based skeleton plus the `@/` alias added.
+- **Language:** app name is "Slomic Smarthytte" and the language is Norwegian Bokmål: `lang="nb"` in `index.html`, `lang: 'nb'` in the PWA manifest, and Norwegian Framework7 texts set in `f7-params.ts`.
 - **Step 1, type-aware linting:** `typeAware` is enabled in `.oxlintrc.json`; oxlint finds `oxlint-tsgolint` automatically. `typescript/no-floating-promises` is set to `error` explicitly. Verified by adding an un-awaited promise, which failed `pnpm lint`. Type-aware rules slow linting slightly; that is expected.
 - **Step 2, formatting:** oxfmt is configured with `semi: false` and `singleQuote: true` to match the existing code style (oxfmt defaults to semicolons and double quotes). `pnpm-lock.yaml` is ignored. oxfmt also formats Markdown and JSON, so `README.md` and `package.json` are formatted by `pnpm format`. The one-off reformat of existing files is in its own commit.
 - **Node 26:** the project runs on Node 26 (LTS since 2026-10-28), pinned in `.nvmrc` and `engines`. Every tool in the stack declares support for it. `@types/node` is on the 26.x line to match; types should match the Node version in use, not the newest release, so bump them together with Node.
@@ -119,3 +128,4 @@ The `@/` alias maps to `src/` (`vite.config.ts` and `tsconfig.app.json`), e.g. `
 - **oxlint false positive:** `Framework7.use(...)` looks like a React hook to `rules-of-hooks`; the call in `f7-setup.ts` has a targeted disable comment.
 - **Step 5, icons:** `lucide-react` is used for all icons. Tested by asserting the rendered `svg.lucide-house` is present and `aria-hidden`.
 - **Step 6, PWA:** `registerType: 'prompt'` with a Framework7 toast; icons generated from one SVG with the `minimal-2023` preset; no `robots.txt` (a private family app does not need to be crawled). Verified in a real Chrome against `vite preview`: the service worker activates, the manifest is served (name, `lang: nb`, 4 icons), a reload with the network off still renders the app, and there are no console errors. That check was a one-off script, not part of the repo; the unit tests cover the update prompt only.
+- **Step 7, check script:** `pnpm check` chains format check, lint, build and tests (the build runs `tsc -b`, so type-checking is included). There is no CI yet; when one is added it should run `pnpm check`.
