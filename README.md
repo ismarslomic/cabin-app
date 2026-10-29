@@ -38,13 +38,23 @@ pnpm dev
 | oxfmt                 | Formatting (Prettier-compatible, Rust)                                                            | `.oxfmtrc.json`                         |
 | oxlint-tsgolint       | Type-aware lint rules for oxlint (e.g. `no-floating-promises`), powered by the TypeScript Go port | `options.typeAware` in `.oxlintrc.json` |
 
+## Framework7
+
+- `framework7/lite-bundle` is the core for React; `Framework7.use(Framework7React)` registers the integration (`src/app/f7-setup.ts`, imported by `App.tsx`).
+- The CSS (`framework7/css/bundle`) is imported in `src/styles/index.css`. The app mounts in `<div id="app">`.
+- `src/app/f7-params.ts` holds the app parameters: name, `theme: 'auto'` (iOS look on iOS, Material elsewhere), `darkMode: 'auto'` (follows the system), routes and Norwegian texts.
+- **Pages and routes.** A page is a component with `<Page>` at the root. Each feature exports its routes from `features/<name>/index.ts` (e.g. `homeRoutes`) and `app/routes.ts` collects them. Use `asyncComponent: () => import(...)` on a route to lazy-load a page.
+- **Texts are Norwegian.** Framework7 has no locale files, so built-in texts are set per component through parameters (currently `dialog.buttonOk` and `dialog.buttonCancel`). Add the others (calendar, searchbar, etc.) when a feature uses them.
+- Framework7 UI is built from its components (`Page`, `Navbar`, `Block`, `List`, ...); check the [React docs](https://framework7.io/react/) before writing custom UI.
+
 ## Testing
 
 - Test files sit next to the code: `Foo.tsx` and `Foo.test.tsx`.
 - Import `describe`, `it` and `expect` from `vitest` explicitly (globals are off).
 - Query by role or label (`getByRole`, `getByLabelText`), not by CSS class or test id, unless there is no alternative.
 - Use `userEvent.setup()` and `await user.click(...)`, not `fireEvent`.
-- `src/test/setup.ts` registers the jest-dom matchers and cleans up after each test.
+- `src/test/setup.ts` registers the jest-dom matchers, cleans up after each test and stubs `window.matchMedia` (missing in jsdom, needed by Framework7).
+- Render Framework7 trees inside `StrictMode` like `main.tsx` does (see `App.test.tsx`). Framework7 pages render asynchronously, so use `findBy*` queries.
 - `src/test/setup.test.tsx` is a smoke test of the tooling itself. Keep it so a broken setup is obvious.
 
 ## Editor setup (IntelliJ IDEA)
@@ -61,7 +71,7 @@ Code is grouped by **feature**, not by technical layer.
 ```
 src/
 ├── main.tsx      # entry point
-├── app/          # app shell and wiring only (App, routes, config)
+├── app/          # app shell and wiring only (App, Framework7 params and setup, routes)
 ├── features/     # one folder per feature: pages, components, hooks, api, tests
 ├── shared/       # used by 2+ features, feature-agnostic
 └── styles/       # global and theme styling only
@@ -85,3 +95,8 @@ The `@/` alias maps to `src/` (`vite.config.ts` and `tsconfig.app.json`), e.g. `
 - **Step 2, formatting:** oxfmt is configured with `semi: false` and `singleQuote: true` to match the existing code style (oxfmt defaults to semicolons and double quotes). `pnpm-lock.yaml` is ignored. oxfmt also formats Markdown and JSON, so `README.md` and `package.json` are formatted by `pnpm format`. The one-off reformat of existing files is in its own commit.
 - **Node 26:** the project runs on Node 26 (LTS since 2026-10-28), pinned in `.nvmrc` and `engines`. Every tool in the stack declares support for it. `@types/node` is on the 26.x line to match; types should match the Node version in use, not the newest release, so bump them together with Node.
 - **Step 3, testing:** Vitest runs in jsdom with globals off, so setup registers `cleanup` itself (Testing Library only auto-cleans when globals exist). The config lives in `vite.config.ts`, imported from `vitest/config`. Verified that a wrong assertion fails.
+- **Step 4, Framework7:** wired as above. `lite-bundle` still includes every Framework7 component, so the production JS is about 1 MB (278 kB gzipped). Revisit before/with the PWA step (precache size) using Framework7's custom build / lazy modules.
+- **Viewport:** the docs suggest `maximum-scale=1, user-scalable=no`; we keep pinch-zoom enabled for accessibility and use `width=device-width, initial-scale=1, viewport-fit=cover`.
+- **Routing:** the router uses in-memory history for now. Decide on `browserHistory` (real URLs, needs an SPA fallback) when we do the PWA step.
+- **oxlint false positive:** `Framework7.use(...)` looks like a React hook to `rules-of-hooks`; the call in `f7-setup.ts` has a targeted disable comment.
+- **Not verified visually:** tests, build and the dev server compile pass, but the rendered look has to be checked in a browser (`pnpm dev`).

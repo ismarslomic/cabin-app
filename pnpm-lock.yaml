@@ -8,6 +8,12 @@ importers:
 
   .:
     dependencies:
+      framework7:
+        specifier: ^9.2.0
+        version: 9.2.0
+      framework7-react:
+        specifier: ^9.2.0
+        version: 9.2.0
       react:
         specifier: ^19.3.1
         version: 19.3.1
@@ -786,6 +792,9 @@ packages:
   dom-accessibility-api@0.6.3:
     resolution: {integrity: sha512-7ZgogeTnjuHbo+ct10G9Ffp0mif17idi0IyWNVA/wcwcm7NPOD/WEHVP3n7n3MhXqxoIYm8d6MuZohYWIZ4T3w==}
 
+  dom7@4.0.6:
+    resolution: {integrity: sha512-emjdpPLhpNubapLFdjNL9tP06Sr+GZkrIHEXLWvOGsytACUrkbeIdjO5g77m00BrHTznnlcNqgmn7pCN192TBA==}
+
   entities@8.1.0:
     resolution: {integrity: sha512-kxL7msIffSuh9aaFAMD7rxAIuTRMAHMeBtgHW2yUdWw732ZNh4MehkF2gdjvtdmikkaIP9bFDDJOPlsvm7avrA==}
     engines: {node: '>=20.19.0'}
@@ -809,10 +818,19 @@ packages:
       picomatch:
         optional: true
 
+  framework7-react@9.2.0:
+    resolution: {integrity: sha512-US8RnxWY/PV1ohYBYlt9D/wYhdjy2sD8CAStiSzLGoJTVdXFtGJBSIeFa1MtabcLL7x9cgC0bkjv+6lHXBQl8Q==}
+
+  framework7@9.2.0:
+    resolution: {integrity: sha512-vakFWISZt/61eYZhACeU7ji4OmX69hxLc70jE8QpLjYLoEXzKcboVA01GbPbavhM4pkgvoFWwvoklEv/fNB28w==}
+
   fsevents@2.3.3:
     resolution: {integrity: sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==}
     engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
     os: [darwin]
+
+  htm@3.1.1:
+    resolution: {integrity: sha512-983Vyg8NwUE7JkZ6NmOqpCZ+sh1bKv2iYTlUkzlWmA5JD2acKoxd4KVxbMmxX/85mtfdnDmTFoNKcg5DGAvxNQ==}
 
   html-encoding-sniffer@7.0.0:
     resolution: {integrity: sha512-UikN5yr7xsCDAq87Or5or0PAlD3HJJOKVzM05az588WnpDJ4Ux7a2A53Qi6gofGg2/EtvF/H4hCi/TXfCW4Y6w==}
@@ -974,6 +992,9 @@ packages:
   parse5@8.0.1:
     resolution: {integrity: sha512-z1e/HMG90obSGeidlli3hj7cbocou0/wa5HacvI3ASx34PecNjNQeaHNo5WIZpWofN9kgkqV1q5YvXe3F0FoPw==}
 
+  path-to-regexp@6.3.0:
+    resolution: {integrity: sha512-Yhpw4T9C6hPpgPeA28us07OJeqZ5EzQTkbfwuhsUg0c237RomFoETJgmp2sa3F/41gfLE6G5cqcYwznmeEeOlQ==}
+
   picocolors@1.1.1:
     resolution: {integrity: sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA==}
 
@@ -1025,9 +1046,18 @@ packages:
   scheduler@0.28.0:
     resolution: {integrity: sha512-juorfCmIkIw8tT+p5BXSm6PJjQF/ycEYmKyzURCIt/RaZIhL+PulbQ9Yu2z1HdOJDdqDTlxA1+xKBmHXJsczAw==}
 
+  skeleton-elements@4.0.1:
+    resolution: {integrity: sha512-T7YSF/Vu/raUcM6v3HiE4VSY/OvrNflg8Dur3Zza6VVJkq4slxm4pJRpGLNhoOfblIPZLQKh1cu7ADKveyqm/Q==}
+
   source-map-js@1.2.2:
     resolution: {integrity: sha512-KGj/8Y43x35aZVDtt+J4mK1hoLGHULMYfSkODJNQjNDC3oW1PqPoxMwo0pLUsWM/UEGzON/NxeHywEfNXNP3Vw==}
     engines: {node: '>=0.10.0'}
+
+  ssr-window@4.0.2:
+    resolution: {integrity: sha512-ISv/Ch+ig7SOtw7G2+qkwfVASzazUnvlDTwypdLoPoySv+6MqlOV10VwPSE6EWkGjhW50lUmghPmpYZXMu/+AQ==}
+
+  ssr-window@5.0.1:
+    resolution: {integrity: sha512-WVXlhQsm54HC+FnJfEbccEgNF7mKXtnFUB8Xn7rx2dsWHOlBdqezdX88Vjh6pVGaa0ZvL+PoSu7rEcBuNmxt6g==}
 
   std-env@4.3.0:
     resolution: {integrity: sha512-OtU/EgQ1kIm5KwqQpBC6ZEMXrZRui11w8zgfTWp8cdO9B8OaPsbA8bTHO2P+HNo1VlUTGMVBwPhydu6poeXiag==}
@@ -1035,6 +1065,10 @@ packages:
   strip-indent@3.0.0:
     resolution: {integrity: sha512-laJTa3Jb+VQpaC6DseHhF7dXVqHTfJPCRDaEbid/drOhgitgYku/letMUqOXFoWV0zIIUbjpdH2t+tYj4bQMRQ==}
     engines: {node: '>=8'}
+
+  swiper@12.2.0:
+    resolution: {integrity: sha512-K8uXsBZU6ME97Ia3xbBge8IRCnR1lOmIILzvY/jGVic7dSTQ530s3uO8RvXbPUtkkXLWIwmZLRPbtDxRWVAFdg==}
+    engines: {node: '>= 4.7.0'}
 
   tinybench@6.2.2:
     resolution: {integrity: sha512-nIZ2N2dFpjBsg2hgitKu7mA+FvsIJuGJOwysRngmVRRmWgR/UyPjwJj8c/fT/dhm8EkHnF5EOogRf+0Z2qrimA==}
@@ -1620,6 +1654,10 @@ snapshots:
 
   dom-accessibility-api@0.6.3: {}
 
+  dom7@4.0.6:
+    dependencies:
+      ssr-window: 4.0.2
+
   entities@8.1.0: {}
 
   es-module-lexer@2.3.2: {}
@@ -1634,8 +1672,21 @@ snapshots:
     optionalDependencies:
       picomatch: 4.0.7
 
+  framework7-react@9.2.0: {}
+
+  framework7@9.2.0:
+    dependencies:
+      dom7: 4.0.6
+      htm: 3.1.1
+      path-to-regexp: 6.3.0
+      skeleton-elements: 4.0.1
+      ssr-window: 5.0.1
+      swiper: 12.2.0
+
   fsevents@2.3.3:
     optional: true
+
+  htm@3.1.1: {}
 
   html-encoding-sniffer@7.0.0:
     dependencies:
@@ -1799,6 +1850,8 @@ snapshots:
     dependencies:
       entities: 8.1.0
 
+  path-to-regexp@6.3.0: {}
+
   picocolors@1.1.1: {}
 
   picomatch@4.0.7: {}
@@ -1860,13 +1913,21 @@ snapshots:
 
   scheduler@0.28.0: {}
 
+  skeleton-elements@4.0.1: {}
+
   source-map-js@1.2.2: {}
+
+  ssr-window@4.0.2: {}
+
+  ssr-window@5.0.1: {}
 
   std-env@4.3.0: {}
 
   strip-indent@3.0.0:
     dependencies:
       min-indent: 1.0.1
+
+  swiper@12.2.0: {}
 
   tinybench@6.2.2: {}
 

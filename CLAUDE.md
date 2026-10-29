@@ -22,6 +22,13 @@ Group by feature, not by technical layer. Full rules in `README.md` ("Folder str
 - Use the `@/` alias for `src/`, not `../../..`.
 - Tests sit next to the code (`Foo.test.tsx`). Import `describe`/`it`/`expect` from `vitest` (no globals). Query by role/label, use `userEvent`, not `fireEvent`. Write or update a test with every feature change.
 
+## Framework7
+
+- UI is Framework7 React (`framework7-react`) on top of `framework7/lite-bundle`. Use its components (`Page`, `Navbar`, `Block`, `List`, ...), not custom HTML/CSS, and check https://framework7.io/react/ for the API.
+- A page component has `<Page>` at the root and lives in `features/<name>/pages/`. Each feature exports its routes in `features/<name>/index.ts`; `app/routes.ts` collects them.
+- App parameters live in `app/f7-params.ts`. Framework7 has no locale files: set built-in Norwegian texts through component parameters.
+- Tests that render Framework7 need `matchMedia` (stubbed in `src/test/setup.ts`), `StrictMode`, and async `findBy*` queries.
+
 ## Workflow
 
 - The stack is added one step at a time: configure, test, document, commit.
