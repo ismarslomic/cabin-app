@@ -156,7 +156,22 @@ The nginx base image runs some start-up scripts, and `docker compose logs` shows
 
 ## Updating dependencies
 
-Do updates by hand like this (Dependabot may open PRs for the same things later; the checks are identical). One kind of update per commit, so a regression is easy to bisect and revert.
+Dependabot opens pull requests for updates (next section); updating by hand follows the same steps, so this chapter is also the checklist for reviewing those PRs. One kind of update per commit, so a regression is easy to bisect and revert.
+
+### Dependabot
+
+`.github/dependabot.yml` checks **npm (pnpm), Docker base images and GitHub Actions** every Monday at 06:00 (Oslo time) and opens pull requests titled `chore(deps): bump …`. CI and the Docker workflow run on each PR. _Security_ updates and vulnerability alerts are separate repository settings (enabled), not part of that file, and they ignore the cooldown below.
+
+- **Groups.** Packages that must move together, major versions included, arrive as one PR: `framework7`, `react`, `vitest`, `oxc`, `testing-library`, `pwa` and `vite` (see the table below for what is in each). Everything else is one `minor-and-patch` PR per week; other major updates arrive as one PR each so you can read their release notes. All GitHub Actions minor and patch updates are one PR.
+- **Ignored on purpose.** `@types/node` majors (they follow Node, see _Node_ below), and major versions of the `node` and `nginx-unprivileged` images (a deliberate upgrade, see _Node_ and _Docker base images_).
+- **Cooldown.** A new release waits 3 days (7 days for an npm major) before Dependabot proposes it, so a broken or compromised release has time to be pulled. pnpm has its own, separate release-age setting (see step 1 below).
+- **No PR is normal.** The first run, on 2026-10-30, opened none: everything was current, and `lucide-react` 1.64.0 was still inside its cooldown.
+
+Reviewing a PR: read the release notes in the PR description, check that CI and the Docker scan are green, then follow the checklist below for what the group needs (for example the visual check for `framework7`, `vite` and `pwa`). To test locally: `gh pr checkout <number>`, `pnpm install`, `pnpm check`. You can steer Dependabot from a PR comment: `@dependabot rebase`, `@dependabot recreate`, or `@dependabot ignore this major version`.
+
+- **A `node` image PR fails CI on purpose.** The check "Dockerfile Node version matches .nvmrc" fails until `.nvmrc` has the same version. Check out the PR branch, put the new version in `.nvmrc`, commit and push to the branch; then CI passes. For a Node _major_, follow _Node_ below instead.
+- **Check the Docker diff.** The base images are pinned by tag and digest. Dependabot should change both in the same `FROM` line; if only one changed, fix it by hand.
+- **Merging is not releasing.** Dependency updates only reach the Pi when you make a release (see _Releasing the Docker image_) and bump the tag in `docker-compose.yml`.
 
 ### npm packages
 

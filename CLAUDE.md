@@ -53,6 +53,7 @@ Group by feature, not by technical layer. Full rules in `README.md` ("Folder str
 
 - Follow the "Updating dependencies" chapter in `README.md`; do not improvise. Key rules: `framework7` and `framework7-react` always the same version; `vitest` and `@vitest/coverage-v8` exactly the same version; `oxlint`, `oxlint-tsgolint` and `oxfmt` together; `@types/node` follows the Node version.
 - Docker base images: change the tag and the digest together (`docker buildx imagetools inspect <image:tag>`), and keep the Node version equal to `.nvmrc`.
+- Dependabot (`.github/dependabot.yml`) opens weekly PRs for npm, Docker base images and Actions, with groups for packages that must move together. Do not merge a Dependabot PR with red CI. A `node` image PR needs a commit on its branch that sets `.nvmrc` to the same version. Keep the groups in `dependabot.yml` in step with the "must move together" table in the README.
 - Never run `pnpm update --latest` on everything at once. Update one group, run `pnpm check`, commit.
 
 ## Icons
