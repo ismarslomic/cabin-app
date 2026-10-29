@@ -5,7 +5,8 @@ This file overrides the global Kotlin/Gradle instructions: this is a **pnpm** pr
 
 ## Commands
 - Package manager: `pnpm` only. Never npm or yarn.
-- `pnpm dev`, `pnpm build` (includes type-check), `pnpm lint`.
+- `pnpm dev`, `pnpm build` (includes type-check), `pnpm typecheck`, `pnpm lint` (type-aware via oxlint-tsgolint).
+- Handle promises: await them, or mark with `void`. `no-floating-promises` is an error.
 - Run `pnpm build` and `pnpm lint` before every commit.
 
 ## Structure

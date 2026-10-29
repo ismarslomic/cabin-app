@@ -1,4 +1,4 @@
-# Cabin app
+# Slomic Smarthytte
 
 Slomic Smarthytte: a mobile-first PWA for the cabin. The UI language is Norwegian Bokmål (`nb`). Built with React, TypeScript and Vite.
 
@@ -19,7 +19,8 @@ pnpm dev
 | ------------ | ------------------------------------- |
 | `pnpm dev`   | Start the Vite dev server             |
 | `pnpm build` | Type-check (`tsc -b`) and build       |
-| `pnpm lint`  | Run oxlint                            |
+| `pnpm typecheck` | Type-check only (`tsc -b`)        |
+| `pnpm lint`  | Run oxlint (type-aware)               |
 | `pnpm preview` | Serve the production build locally  |
 
 ## Stack
@@ -29,6 +30,7 @@ pnpm dev
 | React 19 + TypeScript | UI and types | `tsconfig*.json` |
 | Vite | Dev server and bundler | `vite.config.ts` |
 | oxlint | Linting | `.oxlintrc.json` |
+| oxlint-tsgolint | Type-aware lint rules for oxlint (e.g. `no-floating-promises`), powered by the TypeScript Go port | `options.typeAware` in `.oxlintrc.json` |
 
 ## Folder structure
 
@@ -57,3 +59,4 @@ The `@/` alias maps to `src/` (`vite.config.ts` and `tsconfig.app.json`), e.g. `
 
 - **Step 0:** removed the Vite template demo, added the folder skeleton and the `@/` alias.
 - **Language:** app name is "Slomic Smarthytte" and the language is Norwegian Bokmål (`lang="nb"` in `index.html`). Use `nb` for the PWA manifest and the Framework7 locale when they are added.
+- **Step 1, type-aware linting:** `typeAware` is enabled in `.oxlintrc.json`; oxlint finds `oxlint-tsgolint` automatically. `typescript/no-floating-promises` is set to `error` explicitly. Verified by adding an un-awaited promise, which failed `pnpm lint`. Type-aware rules slow linting slightly; that is expected.
