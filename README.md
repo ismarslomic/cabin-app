@@ -238,6 +238,18 @@ Both base images in the `Dockerfile` are pinned as `name:version@sha256:digest`.
 
 The versions in `.github/workflows/*.yml` (`actions/checkout@v7` and so on) are major tags. To update, change the major, read that action's release notes for breaking input changes, push and watch the run succeed.
 
+## GitHub repository setup
+
+Some settings live on GitHub, not in files. This is what is configured, so you can recreate it:
+
+- **Branch ruleset on `main`**, versioned in `.github/rulesets/main.json`: `main` cannot be deleted or force-pushed, and the status checks `check` (CI) and `image` (Docker workflow) must pass. These are the job names in the workflows; renaming a job means updating the ruleset. Repository admins (you) are allowed to bypass it, so direct pushes to `main` still work; it is Dependabot and other pull requests that cannot merge until both checks are green. Apply or reapply it with `gh api -X POST repos/ismarslomic/cabin-app/rulesets --input .github/rulesets/main.json` (to change an existing one, `PUT` to `rulesets/<id>` instead).
+- **Merged branches are deleted automatically.**
+- **Security:** Dependabot alerts and security updates, private vulnerability reporting (the channel `SECURITY.md` points to), and secret scanning with push protection are enabled.
+- **Codecov:** the Codecov GitHub app is installed and the `CODECOV_TOKEN` Actions secret is set. Dependabot pull requests skip the upload because Dependabot runs do not get Actions secrets.
+- **Package:** the `cabin-app` GHCR package is public.
+
+Community files: `LICENSE` (MIT), `SECURITY.md`, a pull request template and `CODEOWNERS` are in the repo. A `CONTRIBUTING.md`, a code of conduct and issue templates are left out on purpose: this is a personal project, and `README.md` and `CLAUDE.md` already explain how to work in it. Add them if you ever invite contributors; GitHub's community-standards percentage is below 100% because of that.
+
 ## Editor setup (IntelliJ IDEA)
 
 1. Install the [Oxc plugin](https://plugins.jetbrains.com/plugin/27061-oxc) (Settings > Plugins > Marketplace > "Oxc"). It runs the project's own `oxfmt` and `oxlint`, so run `pnpm install` first.
@@ -278,3 +290,7 @@ The `@/` alias maps to `src/` (`vite.config.ts` and `tsconfig.app.json`), e.g. `
 - **Routing:** the router uses in-memory history. Real URLs (`browserHistory`) need the server and service worker to fall back to `index.html`; the generated worker already does (`navigateFallback`), so it can be switched on when deep links matter.
 - **No `robots.txt`:** the PWA docs list one among the minimal requirements, but this is a private family app that does not need to be crawled.
 - **Cloudflare Access and AJAX:** when an Access session expires, requests from the page get a redirect to the Cloudflare login, which the browser reports as a CORS error. Cloudflare's [session management docs](https://developers.cloudflare.com/cloudflare-one/access-controls/access-settings/session-management/#ajax) say to send `X-Requested-With: XMLHttpRequest` on AJAX requests to get a clear `401` instead. That is a request header, so it is set by the app's code, not by nginx. Once the app makes its first API call, send all requests through one shared helper that adds the header and shows a "session expired, reload" message on `401`.
+
+## License
+
+[MIT](LICENSE)

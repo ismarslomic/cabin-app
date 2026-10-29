@@ -56,6 +56,11 @@ Group by feature, not by technical layer. Full rules in `README.md` ("Folder str
 - Dependabot (`.github/dependabot.yml`) opens weekly PRs for npm, Docker base images and Actions, with groups for packages that must move together. Do not merge a Dependabot PR with red CI. A `node` image PR needs a commit on its branch that sets `.nvmrc` to the same version. Keep the groups in `dependabot.yml` in step with the "must move together" table in the README.
 - Never run `pnpm update --latest` on everything at once. Update one group, run `pnpm check`, commit.
 
+## GitHub
+
+- Direct pushes to `main` are allowed for the owner; force pushes and deleting `main` are blocked by the ruleset in `.github/rulesets/main.json`. It requires the checks named `check` (job in `ci.yml`) and `image` (job in `docker.yml`): do not rename those jobs without updating the ruleset.
+- Do not create releases, change repository settings or visibility, or publish anything without the user asking: those are public actions.
+
 ## Icons
 
 - Use `lucide-react` only; import each icon by name (`import { House } from 'lucide-react'`). Never `import *` or look icons up by string, which breaks tree-shaking.
