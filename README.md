@@ -114,18 +114,13 @@ Rules:
 
 The `@/` alias maps to `src/` (`vite.config.ts` and `tsconfig.app.json`), e.g. `import App from '@/app/App.tsx'`.
 
-## Decisions and gotchas
+## Gotchas and decisions
 
-- **Folder skeleton:** the Vite template demo was removed and the feature-based skeleton plus the `@/` alias added.
-- **Language:** app name is "Slomic Smarthytte" and the language is Norwegian Bokmål: `lang="nb"` in `index.html`, `lang: 'nb'` in the PWA manifest, and Norwegian Framework7 texts set in `f7-params.ts`.
-- **Step 1, type-aware linting:** `typeAware` is enabled in `.oxlintrc.json`; oxlint finds `oxlint-tsgolint` automatically. `typescript/no-floating-promises` is set to `error` explicitly. Verified by adding an un-awaited promise, which failed `pnpm lint`. Type-aware rules slow linting slightly; that is expected.
-- **Step 2, formatting:** oxfmt is configured with `semi: false` and `singleQuote: true` to match the existing code style (oxfmt defaults to semicolons and double quotes). `pnpm-lock.yaml` is ignored. oxfmt also formats Markdown and JSON, so `README.md` and `package.json` are formatted by `pnpm format`. The one-off reformat of existing files is in its own commit.
-- **Node 26:** the project runs on Node 26 (LTS since 2026-10-28), pinned in `.nvmrc` and `engines`. Every tool in the stack declares support for it. `@types/node` is on the 26.x line to match; types should match the Node version in use, not the newest release, so bump them together with Node.
-- **Step 3, testing:** Vitest runs in jsdom with globals off, so setup registers `cleanup` itself (Testing Library only auto-cleans when globals exist). The config lives in `vite.config.ts`, imported from `vitest/config`. Verified that a wrong assertion fails.
-- **Step 4, Framework7:** wired as above. `lite-bundle` still includes every Framework7 component, so the production JS is about 1 MB (278 kB gzipped) and the Framework7 CSS about 500 kB (73 kB gzipped). Fine for a PWA that is cached after the first visit (each file is under Workbox's 2 MiB precache limit), but Framework7's custom build / lazy modules can shrink both if first-load time ever matters.
-- **Viewport:** the docs suggest `maximum-scale=1, user-scalable=no`; we keep pinch-zoom enabled for accessibility and use `width=device-width, initial-scale=1, viewport-fit=cover`.
-- **Routing:** the router uses in-memory history for now. Real URLs (`browserHistory`) would need the server and service worker to fall back to `index.html`; the generated worker already does (`navigateFallback`), so it can be switched on when deep links matter.
-- **oxlint false positive:** `Framework7.use(...)` looks like a React hook to `rules-of-hooks`; the call in `f7-setup.ts` has a targeted disable comment.
-- **Step 5, icons:** `lucide-react` is used for all icons. Tested by asserting the rendered `svg.lucide-house` is present and `aria-hidden`.
-- **Step 6, PWA:** `registerType: 'prompt'` with a Framework7 toast; icons generated from one SVG with the `minimal-2023` preset; no `robots.txt` (a private family app does not need to be crawled). Verified in a real Chrome against `vite preview`: the service worker activates, the manifest is served (name, `lang: nb`, 4 icons), a reload with the network off still renders the app, and there are no console errors. That check was a one-off script, not part of the repo; the unit tests cover the update prompt only.
-- **Step 7, check script:** `pnpm check` chains format check, lint, build and tests (the build runs `tsc -b`, so type-checking is included). There is no CI yet; when one is added it should run `pnpm check`.
+- **Language:** Norwegian Bokmål (`nb`) is set in three places: `lang="nb"` in `index.html`, `lang: 'nb'` in the PWA manifest, and the Framework7 texts in `f7-params.ts`.
+- **oxfmt config:** `semi: false` and `singleQuote: true` differ from oxfmt's defaults (semicolons, double quotes); they match the code style the project started with. oxfmt also formats Markdown and JSON, so `pnpm format` touches `README.md` and `package.json` too.
+- **Node 26:** LTS since 2026-10-28 and supported by every tool in the stack. Pinned in `.nvmrc` and `engines`. Bump `@types/node` together with Node: types should match the Node version in use, not the newest release.
+- **Bundle size:** `framework7/lite-bundle` includes every Framework7 component, so production JS is about 1 MB (278 kB gzipped) and the Framework7 CSS about 500 kB (73 kB gzipped). That is fine for a PWA cached after the first visit (each file is under Workbox's 2 MiB precache limit). Framework7's custom build / lazy modules can shrink both if first-load time ever matters.
+- **Viewport:** the Framework7 docs suggest `maximum-scale=1, user-scalable=no`; we keep pinch-zoom enabled for accessibility and use `width=device-width, initial-scale=1, viewport-fit=cover`.
+- **Routing:** the router uses in-memory history. Real URLs (`browserHistory`) need the server and service worker to fall back to `index.html`; the generated worker already does (`navigateFallback`), so it can be switched on when deep links matter.
+- **No `robots.txt`:** the PWA docs list one among the minimal requirements, but this is a private family app that does not need to be crawled.
+- **No CI yet:** `pnpm check` is what CI should run once it is added.
