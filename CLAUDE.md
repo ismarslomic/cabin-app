@@ -7,10 +7,10 @@ This file overrides the global Kotlin/Gradle instructions: this is a **pnpm** pr
 
 - Node 26 (`.nvmrc`). Run `nvm use` in a new shell first (`source ~/.nvm/nvm.sh && nvm use`).
 - Package manager: `pnpm` only. Never npm or yarn.
-- `pnpm dev`, `pnpm build` (includes type-check), `pnpm typecheck`, `pnpm lint` (type-aware via oxlint-tsgolint).
+- `pnpm dev`, `pnpm build` (includes type-check), `pnpm test` (Vitest, once) / `pnpm test:watch`, `pnpm typecheck`, `pnpm lint` (type-aware via oxlint-tsgolint).
 - Handle promises: await them, or mark with `void`. `no-floating-promises` is an error.
 - `pnpm format` writes formatting (oxfmt); `pnpm format:check` verifies it. Do not hand-format.
-- Before every commit, and at the end of every step, run all of: `pnpm format`, `pnpm lint`, `pnpm build`, `pnpm test` (once the test script exists, from step 3). Fix failures before committing.
+- Before every commit, and at the end of every step, run all of: `pnpm format`, `pnpm lint`, `pnpm build`, `pnpm test`. Fix failures before committing.
 
 ## Structure
 
@@ -20,7 +20,7 @@ Group by feature, not by technical layer. Full rules in `README.md` ("Folder str
 - `src/shared/`: only when 2+ features need it. `src/styles/`: global styling only.
 - Features never import another feature's internals, and never import from `app/`.
 - Use the `@/` alias for `src/`, not `../../..`.
-- Tests sit next to the code.
+- Tests sit next to the code (`Foo.test.tsx`). Import `describe`/`it`/`expect` from `vitest` (no globals). Query by role/label, use `userEvent`, not `fireEvent`. Write or update a test with every feature change.
 
 ## Workflow
 

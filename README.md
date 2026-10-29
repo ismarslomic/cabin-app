@@ -20,6 +20,8 @@ pnpm dev
 | ------------------- | ---------------------------------- |
 | `pnpm dev`          | Start the Vite dev server          |
 | `pnpm build`        | Type-check (`tsc -b`) and build    |
+| `pnpm test`         | Run all tests once (Vitest)        |
+| `pnpm test:watch`   | Run tests in watch mode            |
 | `pnpm typecheck`    | Type-check only (`tsc -b`)         |
 | `pnpm lint`         | Run oxlint (type-aware)            |
 | `pnpm format`       | Format all files with oxfmt        |
@@ -35,6 +37,15 @@ pnpm dev
 | oxlint                | Linting                                                                                           | `.oxlintrc.json`                        |
 | oxfmt                 | Formatting (Prettier-compatible, Rust)                                                            | `.oxfmtrc.json`                         |
 | oxlint-tsgolint       | Type-aware lint rules for oxlint (e.g. `no-floating-promises`), powered by the TypeScript Go port | `options.typeAware` in `.oxlintrc.json` |
+
+## Testing
+
+- Test files sit next to the code: `Foo.tsx` and `Foo.test.tsx`.
+- Import `describe`, `it` and `expect` from `vitest` explicitly (globals are off).
+- Query by role or label (`getByRole`, `getByLabelText`), not by CSS class or test id, unless there is no alternative.
+- Use `userEvent.setup()` and `await user.click(...)`, not `fireEvent`.
+- `src/test/setup.ts` registers the jest-dom matchers and cleans up after each test.
+- `src/test/setup.test.tsx` is a smoke test of the tooling itself. Keep it so a broken setup is obvious.
 
 ## Editor setup (IntelliJ IDEA)
 
@@ -73,3 +84,4 @@ The `@/` alias maps to `src/` (`vite.config.ts` and `tsconfig.app.json`), e.g. `
 - **Step 1, type-aware linting:** `typeAware` is enabled in `.oxlintrc.json`; oxlint finds `oxlint-tsgolint` automatically. `typescript/no-floating-promises` is set to `error` explicitly. Verified by adding an un-awaited promise, which failed `pnpm lint`. Type-aware rules slow linting slightly; that is expected.
 - **Step 2, formatting:** oxfmt is configured with `semi: false` and `singleQuote: true` to match the existing code style (oxfmt defaults to semicolons and double quotes). `pnpm-lock.yaml` is ignored. oxfmt also formats Markdown and JSON, so `README.md` and `package.json` are formatted by `pnpm format`. The one-off reformat of existing files is in its own commit.
 - **Node 26:** the project runs on Node 26 (LTS since 2026-10-28), pinned in `.nvmrc` and `engines`. Every tool in the stack declares support for it. `@types/node` is on the 26.x line to match; types should match the Node version in use, not the newest release, so bump them together with Node.
+- **Step 3, testing:** Vitest runs in jsdom with globals off, so setup registers `cleanup` itself (Testing Library only auto-cleans when globals exist). The config lives in `vite.config.ts`, imported from `vitest/config`. Verified that a wrong assertion fails.
