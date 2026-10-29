@@ -37,6 +37,13 @@ Group by feature, not by technical layer. Full rules in `README.md` ("Folder str
 - The service worker only exists in a production build. Test PWA changes with `pnpm build && pnpm preview`, not `pnpm dev`.
 - Mock `virtual:pwa-register/react` in tests that need update/offline states.
 
+## Docker
+
+- `Dockerfile` (build with Node, serve with `nginx-unprivileged` on 8080), `nginx/`, `compose.yaml`. Target is a Raspberry Pi 5 (`linux/arm64` only). TLS is done by a Cloudflare Tunnel, not the container.
+- Keep the Node major in `Dockerfile` equal to `.nvmrc`. There is no corepack in the Node image; pnpm is installed from `packageManager`.
+- Do not weaken the nginx caching rules: `sw.js`, `workbox-*.js`, `manifest.webmanifest` and HTML must stay `no-cache`; only `/assets/` is immutable. A new nginx `location` that uses `add_header` must include `security-headers.conf`.
+- After changing the Dockerfile or nginx config, build and run the image and check headers with `curl -I`; the PWA offline behaviour is the thing that breaks silently.
+
 ## Icons
 
 - Use `lucide-react` only; import each icon by name (`import { House } from 'lucide-react'`). Never `import *` or look icons up by string, which breaks tree-shaking.

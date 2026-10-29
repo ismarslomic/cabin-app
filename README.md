@@ -48,6 +48,7 @@ pnpm dev
 | [@testing-library/react](https://testing-library.com/docs/react-testing-library/intro/) + [`dom`](https://testing-library.com/docs/dom-testing-library/intro/) | Render components and query them like a user would (`dom` is a required peer dependency)          | `src/test/setup.ts`                           |
 | [@testing-library/jest-dom](https://github.com/testing-library/jest-dom)                                                                                       | DOM matchers such as `toBeVisible()` and `toBeInTheDocument()`                                    | `src/test/setup.ts`                           |
 | [@testing-library/user-event](https://testing-library.com/docs/user-event/intro/)                                                                              | Realistic user interaction (`await user.click(...)`)                                              | n/a                                           |
+| [Docker](https://docs.docker.com/) + [nginx](https://nginx.org/en/docs/) (`nginx-unprivileged`)                                                                | Container image that serves the built app as static files, as a non-root user                     | `Dockerfile`, `nginx/`, `compose.yaml`        |
 | [oxlint](https://oxc.rs/docs/guide/usage/linter)                                                                                                               | Linting                                                                                           | `.oxlintrc.json`                              |
 | [oxlint-tsgolint](https://oxc.rs/docs/guide/usage/linter/type-aware)                                                                                           | Type-aware lint rules for oxlint (e.g. `no-floating-promises`), powered by the TypeScript Go port | `options.typeAware` in `.oxlintrc.json`       |
 | [oxfmt](https://oxc.rs/docs/guide/usage/formatter)                                                                                                             | Formatting (Prettier-compatible, Rust)                                                            | `.oxfmtrc.json`                               |
@@ -91,6 +92,25 @@ pnpm dev
 ## Continuous integration
 
 `.github/workflows/ci.yml` runs on every pull request and on pushes to `main`: install with the frozen lockfile, format check, lint, build (with type-check) and tests with coverage. It is the same as `pnpm check`, with coverage on, followed by an upload of `coverage/lcov.info` to [Codecov](https://codecov.io/gh/ismarslomic/cabin-app) (the `CODECOV_TOKEN` repository secret; a failed upload fails the build). Node comes from `.nvmrc` and the pnpm version from `packageManager` in `package.json`, so CI and your machine use the same versions. `codecov.yml` sets the pull request checks: total coverage may drop at most 2 points, and the lines changed in a PR are compared against the project average. Coverage settings are in the `test.coverage` block of `vite.config.ts`: Vitest 5 only reports files that tests import unless `include` is set, and it excludes nothing by default, so tests, test setup and `main.tsx` are excluded explicitly.
+
+## Docker
+
+The app is deployed as a container on a Raspberry Pi 5 (`linux/arm64`, a single architecture on purpose).
+
+- **`Dockerfile`:** two stages. A `node:26-alpine` stage runs `pnpm build`; the final stage is `nginxinc/nginx-unprivileged` serving `dist/` on port **8080** as a non-root user. The Node major must match `.nvmrc`. The Node image has no corepack, so pnpm is installed with npm using the version from `packageManager`.
+- **`nginx/default.conf`:** exists because a PWA needs specific headers. `sw.js`, the Workbox runtime, `manifest.webmanifest` and the HTML are `no-cache`, otherwise users get stuck on an old version. Hashed files in `/assets/` are cached for a year (`immutable`, success responses only). `manifest.webmanifest` is served as `application/manifest+json`. Unknown paths fall back to `index.html`. `/healthz` is used by the container health check. Security headers live in `nginx/security-headers.conf`, which every location includes, because `add_header` is not inherited once a location sets its own.
+- **`compose.yaml`:** runs the image read-only, with all capabilities dropped, `no-new-privileges` and `restart: unless-stopped`. The port is bound to `127.0.0.1` so only the Cloudflare Tunnel on the Pi can reach it. Point the tunnel at `http://localhost:8080`; if `cloudflared` runs as a container instead, drop `ports` and share a Docker network.
+- **HTTPS** is terminated by the Cloudflare Tunnel. The container itself speaks plain HTTP. The service worker and PWA install only work over HTTPS (or `localhost`), so always open the app through the tunnel address.
+
+Run it locally:
+
+```sh
+docker build -t cabin-app .
+docker run --rm -p 8080:8080 cabin-app     # http://localhost:8080
+# or, with Docker Compose (builds from this repo): docker compose up --build
+```
+
+On the Pi: `docker compose pull && docker compose up -d`, optionally pinning a version with `CABIN_APP_VERSION=1`.
 
 ## Editor setup (IntelliJ IDEA)
 

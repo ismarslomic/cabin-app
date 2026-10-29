@@ -1,0 +1,20 @@
+# Runs the app on the Raspberry Pi. TLS is terminated by the Cloudflare Tunnel in front of it.
+# On the Pi: `docker compose pull && docker compose up -d` (pin a version with CABIN_APP_VERSION=1).
+# Locally: `docker compose up --build` builds the image from this repo instead.
+services:
+  cabin-app:
+    image: ghcr.io/ismarslomic/cabin-app:${CABIN_APP_VERSION:-latest}
+    build: .
+    container_name: cabin-app
+    restart: unless-stopped
+    # Only reachable from the Pi itself (cloudflared running on the host).
+    # If cloudflared runs as a container, drop `ports` and share a Docker network with it instead.
+    ports:
+      - '127.0.0.1:8080:8080'
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
