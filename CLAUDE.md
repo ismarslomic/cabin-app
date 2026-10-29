@@ -29,6 +29,11 @@ Group by feature, not by technical layer. Full rules in `README.md` ("Folder str
 - App parameters live in `app/f7-params.ts`. Framework7 has no locale files: set built-in Norwegian texts through component parameters.
 - Tests that render Framework7 need `matchMedia` (stubbed in `src/test/setup.ts`), `StrictMode`, and async `findBy*` queries.
 
+## Icons
+
+- Use `lucide-react` only; import each icon by name (`import { House } from 'lucide-react'`). Never `import *` or look icons up by string, which breaks tree-shaking.
+- No hard-coded colors (icons use `currentColor`). Icon-only controls need an `aria-label` on the control.
+
 ## Workflow
 
 - The stack is added one step at a time: configure, test, document, commit.

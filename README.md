@@ -47,6 +47,14 @@ pnpm dev
 - **Texts are Norwegian.** Framework7 has no locale files, so built-in texts are set per component through parameters (currently `dialog.buttonOk` and `dialog.buttonCancel`). Add the others (calendar, searchbar, etc.) when a feature uses them.
 - Framework7 UI is built from its components (`Page`, `Navbar`, `Block`, `List`, ...); check the [React docs](https://framework7.io/react/) before writing custom UI.
 
+## Icons
+
+- Import each icon by name where it is used: `import { House } from 'lucide-react'`. The package is tree-shaken, so only imported icons end up in the bundle (one icon cost about 3 kB raw, 1.5 kB gzipped, including lucide's small runtime). Never `import * as` the package or build icons from a name string, which would pull in everything.
+- Icons draw with `currentColor`, so they follow Framework7's text, link and dark-mode colors. Do not hard-code colors.
+- Size with the `size` prop (px). Icons are `aria-hidden` by default, which is right for decorative icons. An icon-only button needs an accessible name on the button, e.g. `<Link iconOnly aria-label="Innstillinger"><Settings /></Link>`.
+- Framework7's own `<Icon>` (Framework7 Icons or Material Icons fonts) is not used. Lucide is the icon set.
+- Browse icons at https://lucide.dev/icons.
+
 ## Testing
 
 - Test files sit next to the code: `Foo.tsx` and `Foo.test.tsx`.
@@ -100,3 +108,4 @@ The `@/` alias maps to `src/` (`vite.config.ts` and `tsconfig.app.json`), e.g. `
 - **Routing:** the router uses in-memory history for now. Decide on `browserHistory` (real URLs, needs an SPA fallback) when we do the PWA step.
 - **oxlint false positive:** `Framework7.use(...)` looks like a React hook to `rules-of-hooks`; the call in `f7-setup.ts` has a targeted disable comment.
 - **Not verified visually:** tests, build and the dev server compile pass, but the rendered look has to be checked in a browser (`pnpm dev`).
+- **Step 5, icons:** `lucide-react` is used for all icons. Tested by asserting the rendered `svg.lucide-house` is present and `aria-hidden`.
