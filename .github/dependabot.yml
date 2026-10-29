@@ -1,0 +1,80 @@
+# Weekly version updates. Security updates are enabled separately in the repository settings.
+# How to handle the pull requests: see "Updating dependencies" in README.md.
+version: 2
+
+updates:
+  - package-ecosystem: npm # also covers pnpm (pnpm-lock.yaml)
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: Europe/Oslo
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: chore
+      include: scope
+    cooldown:
+      default-days: 3
+      semver-major-days: 7
+    ignore:
+      # @types/node follows the Node version in .nvmrc, not the newest release.
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
+    # A dependency goes into the first group it matches. Packages that must be updated together
+    # (including their major versions) share a group; everything else is minor/patch only, and
+    # other major updates arrive as one pull request each.
+    groups:
+      framework7:
+        patterns: ['framework7', 'framework7-react']
+      react:
+        patterns: ['react', 'react-dom', '@types/react', '@types/react-dom']
+      vitest:
+        patterns: ['vitest', '@vitest/*']
+      oxc:
+        patterns: ['oxlint', 'oxlint-tsgolint', 'oxfmt']
+      testing-library:
+        patterns: ['@testing-library/*']
+      pwa:
+        patterns: ['vite-plugin-pwa', 'workbox-window', '@vite-pwa/*']
+      vite:
+        patterns: ['vite', '@vitejs/*']
+      minor-and-patch:
+        patterns: ['*']
+        update-types: ['minor', 'patch']
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: Europe/Oslo
+    commit-message:
+      prefix: chore
+      include: scope
+    cooldown:
+      default-days: 3
+    ignore:
+      # A new Node or nginx major is a deliberate upgrade: see "Updating dependencies" in README.md.
+      - dependency-name: node
+        update-types: ['version-update:semver-major']
+      - dependency-name: nginxinc/nginx-unprivileged
+        update-types: ['version-update:semver-major']
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: Europe/Oslo
+    commit-message:
+      prefix: chore
+      include: scope
+    cooldown:
+      default-days: 3
+    groups:
+      actions:
+        patterns: ['*']
+        update-types: ['minor', 'patch']
