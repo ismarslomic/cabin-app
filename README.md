@@ -15,25 +15,25 @@ pnpm dev
 
 ## Scripts
 
-| Script       | What it does                          |
-| ------------ | ------------------------------------- |
-| `pnpm dev`   | Start the Vite dev server             |
-| `pnpm build` | Type-check (`tsc -b`) and build       |
-| `pnpm typecheck` | Type-check only (`tsc -b`)        |
-| `pnpm lint`  | Run oxlint (type-aware)               |
-| `pnpm format` | Format all files with oxfmt          |
-| `pnpm format:check` | Check formatting without writing |
-| `pnpm preview` | Serve the production build locally  |
+| Script              | What it does                       |
+| ------------------- | ---------------------------------- |
+| `pnpm dev`          | Start the Vite dev server          |
+| `pnpm build`        | Type-check (`tsc -b`) and build    |
+| `pnpm typecheck`    | Type-check only (`tsc -b`)         |
+| `pnpm lint`         | Run oxlint (type-aware)            |
+| `pnpm format`       | Format all files with oxfmt        |
+| `pnpm format:check` | Check formatting without writing   |
+| `pnpm preview`      | Serve the production build locally |
 
 ## Stack
 
-| Tool | Why | Config |
-| ---- | --- | ------ |
-| React 19 + TypeScript | UI and types | `tsconfig*.json` |
-| Vite | Dev server and bundler | `vite.config.ts` |
-| oxlint | Linting | `.oxlintrc.json` |
-| oxfmt | Formatting (Prettier-compatible, Rust) | `.oxfmtrc.json` |
-| oxlint-tsgolint | Type-aware lint rules for oxlint (e.g. `no-floating-promises`), powered by the TypeScript Go port | `options.typeAware` in `.oxlintrc.json` |
+| Tool                  | Why                                                                                               | Config                                  |
+| --------------------- | ------------------------------------------------------------------------------------------------- | --------------------------------------- |
+| React 19 + TypeScript | UI and types                                                                                      | `tsconfig*.json`                        |
+| Vite                  | Dev server and bundler                                                                            | `vite.config.ts`                        |
+| oxlint                | Linting                                                                                           | `.oxlintrc.json`                        |
+| oxfmt                 | Formatting (Prettier-compatible, Rust)                                                            | `.oxfmtrc.json`                         |
+| oxlint-tsgolint       | Type-aware lint rules for oxlint (e.g. `no-floating-promises`), powered by the TypeScript Go port | `options.typeAware` in `.oxlintrc.json` |
 
 ## Folder structure
 
