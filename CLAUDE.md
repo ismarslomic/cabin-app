@@ -9,7 +9,7 @@ This file overrides the global Kotlin/Gradle instructions: this is a **pnpm** pr
 - `pnpm dev`, `pnpm build` (includes type-check), `pnpm typecheck`, `pnpm lint` (type-aware via oxlint-tsgolint).
 - Handle promises: await them, or mark with `void`. `no-floating-promises` is an error.
 - `pnpm format` writes formatting (oxfmt); `pnpm format:check` verifies it. Do not hand-format.
-- Run `pnpm format`, `pnpm build` and `pnpm lint` before every commit.
+- Before every commit, and at the end of every step, run all of: `pnpm format`, `pnpm lint`, `pnpm build`, `pnpm test` (once the test script exists, from step 3). Fix failures before committing.
 
 ## Structure
 
