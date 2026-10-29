@@ -18,6 +18,8 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
+      - name: Dockerfile Node version matches .nvmrc
+        run: grep -q "^FROM node:$(tr -d 'v[:space:]' < .nvmrc)-alpine@" Dockerfile
       # pnpm version comes from "packageManager" in package.json
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v7

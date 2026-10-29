@@ -5,7 +5,7 @@ This file overrides the global Kotlin/Gradle instructions: this is a **pnpm** pr
 
 ## Commands
 
-- Node 26 (`.nvmrc`). Run `nvm use` in a new shell first (`source ~/.nvm/nvm.sh && nvm use`).
+- Node 26, exact version in `.nvmrc`. Run `nvm use` in a new shell first (`source ~/.nvm/nvm.sh && nvm use`).
 - Package manager: `pnpm` only. Never npm or yarn.
 - `pnpm dev`, `pnpm test` (Vitest, once) / `pnpm test:watch`, `pnpm typecheck`, `pnpm lint` (type-aware via oxlint-tsgolint), `pnpm build` (includes type-check).
 - Handle promises: await them, or mark with `void`. `no-floating-promises` is an error.
@@ -40,9 +40,11 @@ Group by feature, not by technical layer. Full rules in `README.md` ("Folder str
 ## Docker
 
 - `Dockerfile` (build with Node, serve with `nginx-unprivileged` on 8080), `nginx/`, `compose.yaml`. Target is a Raspberry Pi 5 (`linux/arm64` only). TLS is done by a Cloudflare Tunnel container on the shared `cloudflared` Docker network; the app has no host port.
-- Base images are pinned by exact version and digest. Never change them to a floating tag like `node:26`. To bump, pull the new tag, copy the digest, change tag and digest together. Keep the Node major equal to `.nvmrc`. There is no corepack in the Node image; pnpm is installed from `packageManager`.
+- Base images are pinned by exact version and digest. Never change them to a floating tag like `node:26`. To bump, pull the new tag, copy the digest, change tag and digest together. The Node version in the `Dockerfile` must equal `.nvmrc` exactly (a CI step checks it); bump both together. There is no corepack in the Node image; pnpm is installed from `packageManager`.
 - Do not weaken the nginx caching rules: `sw.js`, `workbox-*.js`, `manifest.webmanifest` and HTML must stay `no-cache`; only `/assets/` is immutable (and without `always`, so errors are not cached). A new nginx `location` that uses `add_header` must include `security-headers.conf`.
 - The Content-Security-Policy in `nginx/security-headers.conf` allows only the app's own origin. A feature that calls an external API or loads external images or fonts must add that origin to `connect-src`, `img-src` or `font-src`, or the browser will silently block it.
+- The `Permissions-Policy` denies camera, microphone, location, payment and USB. To let a feature use one, allow only our own origin for that single directive (e.g. `geolocation=(self)`); do not delete the header.
+- Authentication is Cloudflare Access in front of the tunnel (not in this repo). All HTTP requests the app makes (`fetch`) must go through one shared helper (create it in `shared/lib/` with the first API call) that sends `X-Requested-With: XMLHttpRequest`, so an expired Access session gives a `401` to handle instead of a login redirect. This is a request header set in code; nginx cannot add it.
 - After changing the Dockerfile or nginx config, build and run the image and check headers with `curl -I`; the PWA offline behaviour and CSP violations are what break silently.
 
 ## Icons
