@@ -97,20 +97,24 @@ pnpm dev
 
 The app is deployed as a container on a Raspberry Pi 5 (`linux/arm64`, a single architecture on purpose).
 
-- **`Dockerfile`:** two stages. A `node:26-alpine` stage runs `pnpm build`; the final stage is `nginxinc/nginx-unprivileged` serving `dist/` on port **8080** as a non-root user. The Node major must match `.nvmrc`. The Node image has no corepack, so pnpm is installed with npm using the version from `packageManager`.
-- **`nginx/default.conf`:** exists because a PWA needs specific headers. `sw.js`, the Workbox runtime, `manifest.webmanifest` and the HTML are `no-cache`, otherwise users get stuck on an old version. Hashed files in `/assets/` are cached for a year (`immutable`, success responses only). `manifest.webmanifest` is served as `application/manifest+json`. Unknown paths fall back to `index.html`. `/healthz` is used by the container health check. Security headers live in `nginx/security-headers.conf`, which every location includes, because `add_header` is not inherited once a location sets its own.
-- **`compose.yaml`:** runs the image read-only, with all capabilities dropped, `no-new-privileges` and `restart: unless-stopped`. The port is bound to `127.0.0.1` so only the Cloudflare Tunnel on the Pi can reach it. Point the tunnel at `http://localhost:8080`; if `cloudflared` runs as a container instead, drop `ports` and share a Docker network.
-- **HTTPS** is terminated by the Cloudflare Tunnel. The container itself speaks plain HTTP. The service worker and PWA install only work over HTTPS (or `localhost`), so always open the app through the tunnel address.
+- **`Dockerfile`:** two stages. A Node stage runs `pnpm build`; the final stage is `nginxinc/nginx-unprivileged` serving `dist/` on port **8080** as a non-root user. Both base images are pinned by **exact version and digest** (`node:26.13.0-alpine@sha256:…`), so a rebuild never silently picks up a different Node, nginx or Alpine. Updates are proposed by Dependabot and verified by CI; to bump by hand, pull the new tag and copy the digest it prints. The Node major must match `.nvmrc`. The Node image has no corepack, so pnpm is installed with npm using the version from `packageManager`.
+- **`nginx/default.conf`:** exists because a PWA needs specific headers. `sw.js`, the Workbox runtime, `manifest.webmanifest` and the HTML are `no-cache`, otherwise users get stuck on an old version. Hashed files in `/assets/` are cached for a year (`immutable`, success responses only). `manifest.webmanifest` is served as `application/manifest+json`. Unknown paths fall back to `index.html`. `/healthz` is used by the container health check.
+- **Hardening:**
+  - nginx runs as a non-root user, hides its version (`server_tokens off`) and sends security headers from `nginx/security-headers.conf`: `nosniff`, `Referrer-Policy`, `X-Frame-Options`, a `Permissions-Policy` that denies camera, microphone and location, and a **Content-Security-Policy** that only allows the app's own origin (`style-src` also allows inline styles because Framework7 sets them). **When the app starts calling an external API or loading images or fonts from another origin, add that origin to `connect-src`, `img-src` or `font-src`**, otherwise the browser blocks it. Every nginx `location` that uses `add_header` must include the snippet, because `add_header` is not inherited.
+  - `compose.yaml` runs the container with a read-only filesystem, all capabilities dropped, `no-new-privileges` and `unless-stopped`.
+  - HSTS is not set here: the container only speaks HTTP, and HTTPS is handled by Cloudflare, so enable HSTS in the Cloudflare dashboard if you want it.
+- **No host port.** The container is only reachable from other containers on the Docker network `cloudflared`, where the Cloudflare Tunnel container runs. In the tunnel's public hostname settings, set the service to `http://cabin-app:8080`. Create the network once with `docker network create cloudflared`, or set `name:` in `compose.yaml` to the network your tunnel already uses (and attach `cloudflared` to it).
+- **HTTPS** is terminated by the Cloudflare Tunnel. The service worker and PWA install only work over HTTPS (or `localhost`), so always open the app through the tunnel address.
+- The app has **no login**. Anyone who can reach the tunnel address sees it. Put [Cloudflare Access](https://developers.cloudflare.com/cloudflare-one/policies/access/) in front of the hostname if that matters.
 
-Run it locally:
+Try the image locally (it publishes a port, unlike `compose.yaml`):
 
 ```sh
 docker build -t cabin-app .
 docker run --rm -p 8080:8080 cabin-app     # http://localhost:8080
-# or, with Docker Compose (builds from this repo): docker compose up --build
 ```
 
-On the Pi: `docker compose pull && docker compose up -d`, optionally pinning a version with `CABIN_APP_VERSION=1`.
+On the Pi: `docker network create cloudflared` (once), then `docker compose pull && docker compose up -d`, optionally pinning a version with `CABIN_APP_VERSION=1`.
 
 ## Editor setup (IntelliJ IDEA)
 

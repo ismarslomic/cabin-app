@@ -1,16 +1,17 @@
-# Runs the app on the Raspberry Pi. TLS is terminated by the Cloudflare Tunnel in front of it.
+# Runs the app on the Raspberry Pi. TLS is terminated by the Cloudflare Tunnel (a container that
+# shares the "cloudflared" Docker network with this one); the app itself is not published on a host port.
 # On the Pi: `docker compose pull && docker compose up -d` (pin a version with CABIN_APP_VERSION=1).
-# Locally: `docker compose up --build` builds the image from this repo instead.
+# In the Cloudflare Tunnel, point the public hostname's service at http://cabin-app:8080.
 services:
   cabin-app:
     image: ghcr.io/ismarslomic/cabin-app:${CABIN_APP_VERSION:-latest}
     build: .
     container_name: cabin-app
     restart: unless-stopped
-    # Only reachable from the Pi itself (cloudflared running on the host).
-    # If cloudflared runs as a container, drop `ports` and share a Docker network with it instead.
-    ports:
-      - '127.0.0.1:8080:8080'
+    expose:
+      - '8080'
+    networks:
+      - cloudflared
     read_only: true
     tmpfs:
       - /tmp
@@ -18,3 +19,9 @@ services:
       - ALL
     security_opt:
       - no-new-privileges:true
+
+networks:
+  cloudflared:
+    # Shared with the cloudflared container. Create it once with `docker network create cloudflared`,
+    # or add `name: <existing network>` here to use the network your tunnel already runs on.
+    external: true
