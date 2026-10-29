@@ -1,32 +1,59 @@
-# React + TypeScript + Vite
+# Cabin app
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Slomic Smarthytte: a mobile-first PWA for the cabin. The UI language is Norwegian Bokmål (`nb`). Built with React, TypeScript and Vite.
 
-Currently, two official plugins are available:
+> The stack is added one step at a time. Each step is documented below when it lands.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Getting started
 
-## React Compiler
+Requires Node 24 and pnpm.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```sh
+pnpm install
+pnpm dev
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+## Scripts
+
+| Script       | What it does                          |
+| ------------ | ------------------------------------- |
+| `pnpm dev`   | Start the Vite dev server             |
+| `pnpm build` | Type-check (`tsc -b`) and build       |
+| `pnpm lint`  | Run oxlint                            |
+| `pnpm preview` | Serve the production build locally  |
+
+## Stack
+
+| Tool | Why | Config |
+| ---- | --- | ------ |
+| React 19 + TypeScript | UI and types | `tsconfig*.json` |
+| Vite | Dev server and bundler | `vite.config.ts` |
+| oxlint | Linting | `.oxlintrc.json` |
+
+## Folder structure
+
+Code is grouped by **feature**, not by technical layer.
+
+```
+src/
+├── main.tsx      # entry point
+├── app/          # app shell and wiring only (App, routes, config)
+├── features/     # one folder per feature: pages, components, hooks, api, tests
+├── shared/       # used by 2+ features, feature-agnostic
+└── styles/       # global and theme styling only
+```
+
+Rules:
+
+1. A feature owns its pages, components, hooks, API calls and tests.
+2. Features import from `shared/`, never from another feature's internals (use its `index.ts`).
+3. Nothing goes in `shared/` until a second feature needs it.
+4. `app/` only wires things together; features never import from `app/`.
+5. Tests sit next to the code they test.
+
+The `@/` alias maps to `src/` (`vite.config.ts` and `tsconfig.app.json`), e.g. `import App from '@/app/App.tsx'`.
+
+## Decisions and gotchas
+
+- **Step 0:** removed the Vite template demo, added the folder skeleton and the `@/` alias.
+- **Language:** app name is "Slomic Smarthytte" and the language is Norwegian Bokmål (`lang="nb"` in `index.html`). Use `nb` for the PWA manifest and the Framework7 locale when they are added.
