@@ -146,7 +146,13 @@ gh release create v0.2.0 --target main --title v0.2.0 --generate-notes
 
 On the Pi, set `CABIN_APP_VERSION` to `1` to follow every `1.x.y` release, or to an exact version to pin it. To roll back, set an older exact version and run `docker compose up -d` again.
 
-The image must be **public** in GHCR for the Pi to pull it without logging in. A new package can start out private; if `docker pull` says `unauthorized`, open the package's settings on GitHub (profile > Packages > `cabin-app` > Package settings) and change the visibility to public. This is a one-time change.
+The image is **public** in GHCR, so the Pi pulls it without logging in (checked for `v0.1.0` with an anonymous token). If `docker pull` ever says `unauthorized`, open the package's settings on GitHub (profile > Packages > `cabin-app` > Package settings) and check the visibility.
+
+In the registry you will see two entries per tag: `linux/arm64` (the image) and `unknown/unknown`, which is the build provenance attestation, not a second platform.
+
+### Normal start-up log lines
+
+The nginx base image runs some start-up scripts, and `docker compose logs` shows one line that looks like a problem but is not: `10-listen-on-ipv6-by-default.sh: info: can not modify /etc/nginx/conf.d/default.conf (read-only file system?)`. The container is read-only on purpose and our own config already says what to listen on (IPv4, port 8080), so there is nothing to change. nginx starts one worker per CPU core (four on the Pi 5).
 
 ## Updating dependencies
 
