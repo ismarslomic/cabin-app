@@ -16,17 +16,18 @@ pnpm dev
 
 ## Scripts
 
-| Script              | What it does                       |
-| ------------------- | ---------------------------------- |
-| `pnpm dev`          | Start the Vite dev server          |
-| `pnpm build`        | Type-check (`tsc -b`) and build    |
-| `pnpm test`         | Run all tests once (Vitest)        |
-| `pnpm test:watch`   | Run tests in watch mode            |
-| `pnpm typecheck`    | Type-check only (`tsc -b`)         |
-| `pnpm lint`         | Run oxlint (type-aware)            |
-| `pnpm format`       | Format all files with oxfmt        |
-| `pnpm format:check` | Check formatting without writing   |
-| `pnpm preview`      | Serve the production build locally |
+| Script                     | What it does                                   |
+| -------------------------- | ---------------------------------------------- |
+| `pnpm dev`                 | Start the Vite dev server                      |
+| `pnpm build`               | Type-check (`tsc -b`) and build                |
+| `pnpm test`                | Run all tests once (Vitest)                    |
+| `pnpm test:watch`          | Run tests in watch mode                        |
+| `pnpm generate-pwa-assets` | Regenerate PWA icons from `public/favicon.svg` |
+| `pnpm typecheck`           | Type-check only (`tsc -b`)                     |
+| `pnpm lint`                | Run oxlint (type-aware)                        |
+| `pnpm format`              | Format all files with oxfmt                    |
+| `pnpm format:check`        | Check formatting without writing               |
+| `pnpm preview`             | Serve the production build locally             |
 
 ## Stack
 
@@ -46,6 +47,15 @@ pnpm dev
 - **Pages and routes.** A page is a component with `<Page>` at the root. Each feature exports its routes from `features/<name>/index.ts` (e.g. `homeRoutes`) and `app/routes.ts` collects them. Use `asyncComponent: () => import(...)` on a route to lazy-load a page.
 - **Texts are Norwegian.** Framework7 has no locale files, so built-in texts are set per component through parameters (currently `dialog.buttonOk` and `dialog.buttonCancel`). Add the others (calendar, searchbar, etc.) when a feature uses them.
 - Framework7 UI is built from its components (`Page`, `Navbar`, `Block`, `List`, ...); check the [React docs](https://framework7.io/react/) before writing custom UI.
+
+## PWA
+
+- **Manifest and service worker** are generated at build time by `vite-plugin-pwa` (`VitePWA(...)` in `vite.config.ts`). The manifest has the app name, `lang: 'nb'`, `theme_color` `#007aff` (must match the `theme-color` meta in `index.html`) and the icons. Every built file (about 1.5 MB) is precached, so the app works offline.
+- **Updates use `registerType: 'prompt'`.** When a new version is deployed, `src/app/UpdatePrompt.tsx` shows a Framework7 toast ("Ny versjon er tilgjengelig" with an **Oppdater** button); the page reloads only when the user taps it, so nobody loses a half-filled form. It also shows "Appen fungerer nå uten nett" the first time the offline cache is ready. Changing between `prompt` and `autoUpdate` after going to production is painful, so decide deliberately.
+- **Icons** come from one source, `public/favicon.svg` (a cabin glyph). Run `pnpm generate-pwa-assets` after editing it; it rewrites the PNGs and `favicon.ico` in `public/`, which are committed. The maskable and Apple icons get white padding automatically.
+- **The PWA is off in `pnpm dev`** (`devOptions` is not enabled). To test it, run `pnpm build && pnpm preview`, then open Chrome DevTools > Application: _Manifest_ shows installability, _Service Workers_ shows the worker, and ticking _Offline_ then reloading proves the offline support.
+- Installing needs HTTPS in production (localhost is exempt) and the server must serve `manifest.webmanifest` as `application/manifest+json`.
+- `virtual:pwa-register/react` is a virtual module; its types come from `vite-plugin-pwa/react` in `tsconfig.app.json`. In tests, mock it (see `UpdatePrompt.test.tsx`); in plain jsdom it registers nothing.
 
 ## Icons
 
@@ -103,9 +113,9 @@ The `@/` alias maps to `src/` (`vite.config.ts` and `tsconfig.app.json`), e.g. `
 - **Step 2, formatting:** oxfmt is configured with `semi: false` and `singleQuote: true` to match the existing code style (oxfmt defaults to semicolons and double quotes). `pnpm-lock.yaml` is ignored. oxfmt also formats Markdown and JSON, so `README.md` and `package.json` are formatted by `pnpm format`. The one-off reformat of existing files is in its own commit.
 - **Node 26:** the project runs on Node 26 (LTS since 2026-10-28), pinned in `.nvmrc` and `engines`. Every tool in the stack declares support for it. `@types/node` is on the 26.x line to match; types should match the Node version in use, not the newest release, so bump them together with Node.
 - **Step 3, testing:** Vitest runs in jsdom with globals off, so setup registers `cleanup` itself (Testing Library only auto-cleans when globals exist). The config lives in `vite.config.ts`, imported from `vitest/config`. Verified that a wrong assertion fails.
-- **Step 4, Framework7:** wired as above. `lite-bundle` still includes every Framework7 component, so the production JS is about 1 MB (278 kB gzipped). Revisit before/with the PWA step (precache size) using Framework7's custom build / lazy modules.
+- **Step 4, Framework7:** wired as above. `lite-bundle` still includes every Framework7 component, so the production JS is about 1 MB (278 kB gzipped) and the Framework7 CSS about 500 kB (73 kB gzipped). Fine for a PWA that is cached after the first visit (each file is under Workbox's 2 MiB precache limit), but Framework7's custom build / lazy modules can shrink both if first-load time ever matters.
 - **Viewport:** the docs suggest `maximum-scale=1, user-scalable=no`; we keep pinch-zoom enabled for accessibility and use `width=device-width, initial-scale=1, viewport-fit=cover`.
-- **Routing:** the router uses in-memory history for now. Decide on `browserHistory` (real URLs, needs an SPA fallback) when we do the PWA step.
+- **Routing:** the router uses in-memory history for now. Real URLs (`browserHistory`) would need the server and service worker to fall back to `index.html`; the generated worker already does (`navigateFallback`), so it can be switched on when deep links matter.
 - **oxlint false positive:** `Framework7.use(...)` looks like a React hook to `rules-of-hooks`; the call in `f7-setup.ts` has a targeted disable comment.
-- **Not verified visually:** tests, build and the dev server compile pass, but the rendered look has to be checked in a browser (`pnpm dev`).
 - **Step 5, icons:** `lucide-react` is used for all icons. Tested by asserting the rendered `svg.lucide-house` is present and `aria-hidden`.
+- **Step 6, PWA:** `registerType: 'prompt'` with a Framework7 toast; icons generated from one SVG with the `minimal-2023` preset; no `robots.txt` (a private family app does not need to be crawled). Verified in a real Chrome against `vite preview`: the service worker activates, the manifest is served (name, `lang: nb`, 4 icons), a reload with the network off still renders the app, and there are no console errors. That check was a one-off script, not part of the repo; the unit tests cover the update prompt only.
