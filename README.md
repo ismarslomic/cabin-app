@@ -48,7 +48,7 @@ pnpm dev
 | [@testing-library/react](https://testing-library.com/docs/react-testing-library/intro/) + [`dom`](https://testing-library.com/docs/dom-testing-library/intro/) | Render components and query them like a user would (`dom` is a required peer dependency)          | `src/test/setup.ts`                           |
 | [@testing-library/jest-dom](https://github.com/testing-library/jest-dom)                                                                                       | DOM matchers such as `toBeVisible()` and `toBeInTheDocument()`                                    | `src/test/setup.ts`                           |
 | [@testing-library/user-event](https://testing-library.com/docs/user-event/intro/)                                                                              | Realistic user interaction (`await user.click(...)`)                                              | n/a                                           |
-| [Docker](https://docs.docker.com/) + [nginx](https://nginx.org/en/docs/) (`nginx-unprivileged`)                                                                | Container image that serves the built app as static files, as a non-root user                     | `Dockerfile`, `nginx/`, `compose.yaml`        |
+| [Docker](https://docs.docker.com/) + [nginx](https://nginx.org/en/docs/) (`nginx-unprivileged`)                                                                | Container image that serves the built app as static files, as a non-root user                     | `Dockerfile`, `nginx/`, `docker-compose.yml`  |
 | [oxlint](https://oxc.rs/docs/guide/usage/linter)                                                                                                               | Linting                                                                                           | `.oxlintrc.json`                              |
 | [oxlint-tsgolint](https://oxc.rs/docs/guide/usage/linter/type-aware)                                                                                           | Type-aware lint rules for oxlint (e.g. `no-floating-promises`), powered by the TypeScript Go port | `options.typeAware` in `.oxlintrc.json`       |
 | [oxfmt](https://oxc.rs/docs/guide/usage/formatter)                                                                                                             | Formatting (Prettier-compatible, Rust)                                                            | `.oxfmtrc.json`                               |
@@ -102,20 +102,20 @@ The app is deployed as a container on a Raspberry Pi 5 (`linux/arm64`, a single 
 - **`nginx/default.conf`:** exists because a PWA needs specific headers. `sw.js`, the Workbox runtime, `manifest.webmanifest` and the HTML are `no-cache`, otherwise users get stuck on an old version. Hashed files in `/assets/` are cached for a year (`immutable`, success responses only). `manifest.webmanifest` is served as `application/manifest+json`. Unknown paths fall back to `index.html`. `/healthz` is used by the container health check.
 - **Hardening:**
   - nginx runs as a non-root user, hides its version (`server_tokens off`) and sends security headers from `nginx/security-headers.conf`: `nosniff`, `Referrer-Policy`, `X-Frame-Options`, a `Permissions-Policy` that denies camera, microphone, location, payment and USB (to use one, allow it for the app's own origin by changing that one directive, e.g. `geolocation=(self)`, instead of removing the header), and a **Content-Security-Policy** that only allows the app's own origin (`style-src` also allows inline styles because Framework7 sets them). **When the app starts calling an external API or loading images or fonts from another origin, add that origin to `connect-src`, `img-src` or `font-src`**, otherwise the browser blocks it. Every nginx `location` that uses `add_header` must include the snippet, because `add_header` is not inherited.
-  - `compose.yaml` runs the container with a read-only filesystem, all capabilities dropped, `no-new-privileges` and `unless-stopped`.
+  - `docker-compose.yml` runs the container with a read-only filesystem, all capabilities dropped, `no-new-privileges` and `unless-stopped`.
   - HSTS is not set here: the container only speaks HTTP, and HTTPS is handled by Cloudflare, so enable HSTS in the Cloudflare dashboard if you want it.
-- **No host port.** The container is only reachable from other containers on the Docker network `cloudflared`, where the Cloudflare Tunnel container runs. In the tunnel's public hostname settings, set the service to `http://cabin-app:8080`. Create the network once with `docker network create cloudflared`, or set `name:` in `compose.yaml` to the network your tunnel already uses (and attach `cloudflared` to it).
+- **No host port.** The container is only reachable from other containers on the Docker network `cloudflared`, where the Cloudflare Tunnel container runs. In the tunnel's public hostname settings, set the service to `http://cabin-app:8080`. Create the network once with `docker network create cloudflared`, or set `name:` in `docker-compose.yml` to the network your tunnel already uses (and attach `cloudflared` to it).
 - **HTTPS** is terminated by the Cloudflare Tunnel. The service worker and PWA install only work over HTTPS (or `localhost`), so always open the app through the tunnel address.
 - **Authentication** is [Cloudflare Access](https://developers.cloudflare.com/cloudflare-one/policies/access/) in front of the tunnel hostname, configured in Cloudflare, not in this repo. The app itself has no login, so never expose the container another way.
 
-Try the image locally (it publishes a port, unlike `compose.yaml`):
+Try the image locally (it publishes a port, unlike `docker-compose.yml`):
 
 ```sh
 docker build -t cabin-app .
 docker run --rm -p 8080:8080 cabin-app     # http://localhost:8080
 ```
 
-On the Pi: `docker network create cloudflared` (once), then `docker compose pull && docker compose up -d`, optionally pinning a version with `CABIN_APP_VERSION=1`.
+The Pi only needs `docker-compose.yml`, not this repository: it never builds anything and always pulls the image from `ghcr.io/ismarslomic/cabin-app` (`pull_policy: always`). On the Pi: `docker network create cloudflared` (once), then `docker compose pull && docker compose up -d`, optionally pinning a version with `CABIN_APP_VERSION=1`.
 
 ## Updating dependencies
 
@@ -166,7 +166,7 @@ Both base images in the `Dockerfile` are pinned as `name:version@sha256:digest`.
 1. **Pick the new version tag**, e.g. `node:26.13.1-alpine` or `nginxinc/nginx-unprivileged:1.31.8-alpine` (Docker Hub tags page of the image). Stay on the same major (and, for nginx, the same minor line unless you have read the release notes).
 2. **Get its digest:** `docker buildx imagetools inspect node:26.13.1-alpine` and copy the top `Digest:` line. It is the digest of the multi-architecture index, which is the one to use (it also works on the Pi's arm64). `docker pull <image>` prints the same `Digest:`.
 3. **Edit the `FROM` line**: new tag and new digest. For Node, also update `.nvmrc` to the same version.
-4. **Build and run it** with the same flags as `compose.yaml`, and look at what nginx serves:
+4. **Build and run it** with the same flags as `docker-compose.yml`, and look at what nginx serves:
 
    ```sh
    docker build -t cabin-app:local .

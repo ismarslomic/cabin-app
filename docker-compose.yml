@@ -5,7 +5,8 @@
 services:
   cabin-app:
     image: ghcr.io/ismarslomic/cabin-app:${CABIN_APP_VERSION:-latest}
-    build: .
+    # Always take the image from the registry; this file is for the Pi and never builds anything.
+    pull_policy: always
     container_name: cabin-app
     restart: unless-stopped
     expose:
