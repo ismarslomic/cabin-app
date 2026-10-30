@@ -82,6 +82,8 @@ Group by feature, not by technical layer. Full rules in `README.md` ("Folder str
 
 ## Workflow
 
+- **Confirm the plan before executing it.** Present the plan (decisions, files, approach) and wait for an explicit go before writing code. An earlier answer to a question is not a go.
+- **Confirm before every commit.** Show what will be committed (files and message) and wait for approval each time; approval for one commit does not cover the next.
 - Small, focused commits; end commit messages with the Co-Authored-By line. Never force push.
 - Match existing style. Do not reformat files you did not touch.
 - Check the library's current docs before configuring it; do not rely on memory.
