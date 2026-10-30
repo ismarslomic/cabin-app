@@ -12,7 +12,14 @@ export default defineConfig({
       registerType: 'prompt',
       // Behind Cloudflare Access the manifest request needs the session cookie, or it is redirected to the login page.
       useCredentials: true,
-      includeAssets: ['favicon.svg', 'favicon.ico', 'apple-touch-icon-180x180.png'],
+      includeAssets: [
+        'favicon.svg',
+        'favicon.ico',
+        'apple-touch-icon-180x180.png',
+        'images/hero-sunset.webp',
+        'images/hero-waterfall.webp',
+        'images/hero-forest.webp',
+      ],
       manifest: {
         name: 'Slomic Smarthytte',
         short_name: 'Smarthytte',

@@ -1,0 +1,31 @@
+/* Photo behind the transparent large navbar. Scrolls with the page and fades into the page background. */
+.home-hero {
+  /* Defaults; HomeHero.tsx sets the real photo and crop inline (see heroes.ts). */
+  --hero-image: none;
+  --hero-position: center;
+
+  position: absolute;
+  inset: 0 0 auto 0;
+  z-index: -1;
+  height: calc(300px + var(--f7-safe-area-top, 0px));
+  pointer-events: none;
+  background:
+    linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0.5) 0%,
+      rgba(0, 0, 0, 0) 55%,
+      var(--f7-page-bg-color) 100%
+    ),
+    var(--hero-image) var(--hero-position) / cover no-repeat;
+}
+
+/* Keeps the cards below the photo, so their section titles never sit on the image. Room for the greeting later. */
+.home-hero-spacer {
+  height: 120px;
+}
+
+/* The title sits on the photo, so it is white in light mode too. */
+.page[data-name='home'] .title-large-text {
+  color: #fff;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.5);
+}
