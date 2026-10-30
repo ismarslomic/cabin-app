@@ -3,7 +3,8 @@ import { routes } from '@/app/routes.ts'
 
 export const f7params: Framework7Parameters = {
   name: 'Slomic Smarthytte',
-  theme: 'auto',
+  // Always iOS: the app should look like a native iOS app (Liquid Glass) on every device.
+  theme: 'ios',
   darkMode: 'auto',
   routes,
   // Framework7 has no locale files: built-in texts are set per component.
