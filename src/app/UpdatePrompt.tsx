@@ -2,7 +2,12 @@ import { f7ready } from 'framework7-react'
 import { useRegisterSW } from 'virtual:pwa-register/react'
 import { useCallback, useEffect, useState } from 'react'
 import { registerAppRefresh } from '@/shared/lib/app-refresh.ts'
-import { checkForUpdate, signInAgain, UPDATE_CHECK_INTERVAL_MS } from '@/app/update-check.ts'
+import {
+  applyUpdate,
+  checkForUpdate,
+  signInAgain,
+  UPDATE_CHECK_INTERVAL_MS,
+} from '@/app/update-check.ts'
 
 // Tells the user, with Framework7 toasts, when a new version is ready or the login session has
 // expired. While the app is open it also looks for new versions regularly.
@@ -64,13 +69,19 @@ export default function UpdatePrompt() {
           closeButton: true,
           closeButtonText: 'Oppdater',
           on: {
-            closeButtonClick: () => void updateServiceWorker(true),
+            closeButtonClick: () => {
+              if (registration) {
+                void applyUpdate({ updateServiceWorker, registration: registration.worker })
+              } else {
+                void updateServiceWorker(true)
+              }
+            },
             close: () => setNeedRefresh(false),
           },
         })
         .open()
     })
-  }, [needRefresh, setNeedRefresh, updateServiceWorker])
+  }, [needRefresh, setNeedRefresh, updateServiceWorker, registration])
 
   useEffect(() => {
     if (!notice) return

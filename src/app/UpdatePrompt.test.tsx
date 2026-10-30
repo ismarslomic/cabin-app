@@ -2,7 +2,12 @@ import { act, render } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import UpdatePrompt from '@/app/UpdatePrompt.tsx'
 import { refreshApp } from '@/shared/lib/app-refresh.ts'
-import { checkForUpdate, signInAgain, UPDATE_CHECK_INTERVAL_MS } from '@/app/update-check.ts'
+import {
+  applyUpdate,
+  checkForUpdate,
+  signInAgain,
+  UPDATE_CHECK_INTERVAL_MS,
+} from '@/app/update-check.ts'
 
 const sw = vi.hoisted(() => ({
   needRefresh: false,
@@ -28,6 +33,7 @@ vi.mock('virtual:pwa-register/react', () => ({
 }))
 vi.mock('@/app/update-check.ts', () => ({
   UPDATE_CHECK_INTERVAL_MS: 600_000,
+  applyUpdate: vi.fn(() => Promise.resolve()),
   checkForUpdate: vi.fn(),
   signInAgain: vi.fn(() => Promise.resolve()),
 }))
@@ -96,6 +102,19 @@ describe('UpdatePrompt', () => {
       document.dispatchEvent(new Event('visibilitychange'))
 
       expect(checkForUpdate).toHaveBeenCalledWith('/sw.js', worker)
+    })
+
+    it('applies the update through applyUpdate once the app is registered', () => {
+      sw.needRefresh = true
+      register()
+
+      const options = toast.create.mock.calls.at(-1)?.[0]
+      options.on.closeButtonClick()
+
+      expect(applyUpdate).toHaveBeenCalledWith({
+        updateServiceWorker: sw.updateServiceWorker,
+        registration: worker,
+      })
     })
 
     it('tells the user the app is up to date after a pull-to-refresh', async () => {

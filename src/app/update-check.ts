@@ -37,3 +37,45 @@ export async function signInAgain(): Promise<void> {
   await Promise.all(cacheNames.map((name) => caches.delete(name)))
   window.location.reload()
 }
+
+interface ApplyUpdateOptions {
+  /** From `useRegisterSW`: tells the waiting worker to take over. */
+  updateServiceWorker: (reloadPage?: boolean) => Promise<void>
+  registration: ServiceWorkerRegistration
+  reload?: () => void
+  /** How long to wait for the browser to report that the new worker took over. */
+  delayMs?: number
+}
+
+/**
+ * Applies the waiting update and reloads into it. vite-plugin-pwa reloads when the browser reports
+ * that the new worker took control, but an installed iOS PWA often never reports it: the worker
+ * takes over and the page just stays on the old version until the app is closed and reopened. So
+ * reload on `controllerchange` too, and force it after a short wait; if the worker is still
+ * waiting by then, ask it to take over once more first.
+ */
+export async function applyUpdate({
+  updateServiceWorker,
+  registration,
+  reload = () => window.location.reload(),
+  delayMs = 2500,
+}: ApplyUpdateOptions): Promise<void> {
+  let reloaded = false
+  const reloadOnce = () => {
+    if (reloaded) return
+    reloaded = true
+    reload()
+  }
+
+  navigator.serviceWorker.addEventListener('controllerchange', reloadOnce, { once: true })
+  await updateServiceWorker(true)
+
+  window.setTimeout(() => {
+    if (!registration.waiting) {
+      reloadOnce()
+      return
+    }
+    registration.waiting.postMessage({ type: 'SKIP_WAITING' })
+    window.setTimeout(reloadOnce, delayMs)
+  }, delayMs)
+}

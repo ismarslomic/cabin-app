@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import { checkForUpdate } from '@/app/update-check.ts'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { applyUpdate, checkForUpdate } from '@/app/update-check.ts'
 
 const fetchMock = vi.fn()
 const update = vi.fn(() => Promise.resolve())
@@ -71,5 +71,64 @@ describe('checkForUpdate', () => {
 
     expect(await checkForUpdate('/sw.js', registration({ installing: true }))).toBe('skipped')
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('applyUpdate', () => {
+  const updateServiceWorker = vi.fn(() => Promise.resolve())
+  const reload = vi.fn()
+  let serviceWorker: EventTarget
+
+  const run = (waiting?: { postMessage: () => void }) =>
+    applyUpdate({
+      updateServiceWorker,
+      registration: { waiting: waiting ?? null } as unknown as ServiceWorkerRegistration,
+      reload,
+      delayMs: 1000,
+    })
+
+  beforeEach(() => {
+    vi.useFakeTimers()
+    serviceWorker = new EventTarget()
+    Object.defineProperty(navigator, 'serviceWorker', { value: serviceWorker, configurable: true })
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.clearAllMocks()
+  })
+
+  it('asks the waiting worker to take over and reloads when it does', async () => {
+    await run()
+
+    expect(updateServiceWorker).toHaveBeenCalledWith(true)
+    serviceWorker.dispatchEvent(new Event('controllerchange'))
+    expect(reload).toHaveBeenCalledTimes(1)
+
+    // The fallback must not reload a second time.
+    vi.advanceTimersByTime(5000)
+    expect(reload).toHaveBeenCalledTimes(1)
+  })
+
+  it('reloads anyway when the browser never reports the takeover (iOS)', async () => {
+    await run()
+
+    vi.advanceTimersByTime(999)
+    expect(reload).not.toHaveBeenCalled()
+
+    vi.advanceTimersByTime(1)
+    expect(reload).toHaveBeenCalledTimes(1)
+  })
+
+  it('asks a worker that is still waiting once more before reloading', async () => {
+    const postMessage = vi.fn()
+    await run({ postMessage })
+
+    vi.advanceTimersByTime(1000)
+    expect(postMessage).toHaveBeenCalledWith({ type: 'SKIP_WAITING' })
+    expect(reload).not.toHaveBeenCalled()
+
+    vi.advanceTimersByTime(1000)
+    expect(reload).toHaveBeenCalledTimes(1)
   })
 })
