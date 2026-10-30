@@ -16,6 +16,8 @@ describe('ViewSwitcher', () => {
 
     const month = await screen.findByRole('link', { name: 'Måned' })
     const list = screen.getByRole('link', { name: 'Liste' })
+    // Capsule shape, like the other glass controls (iOS 26).
+    expect(month.closest('.segmented')).toHaveClass('segmented-round')
     expect(month).toHaveClass('button-active')
     expect(list).not.toHaveClass('button-active')
 
