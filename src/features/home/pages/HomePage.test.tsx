@@ -13,7 +13,7 @@ describe('HomePage', () => {
     )
 
     // The large Framework7 title is rendered twice (collapsed and large).
-    expect((await screen.findAllByText('Hytteportalen')).length).toBeGreaterThan(0)
+    expect((await screen.findAllByText('Slomic smarthytte')).length).toBeGreaterThan(0)
     for (const section of ['Gjeldende besøk', 'Neste besøk', 'Dette året']) {
       expect(screen.getByText(section)).toBeInTheDocument()
     }

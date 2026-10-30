@@ -16,7 +16,7 @@ export default function HomePage() {
         setHero((current) => pickHero(Math.random, current))
       }}
     >
-      <Navbar title="Hytteportalen" large transparent />
+      <Navbar title="Slomic smarthytte" large transparent />
       <HomeHero hero={hero} />
       <Placeholder title="Gjeldende besøk" />
       <Placeholder title="Neste besøk" />
