@@ -1,14 +1,13 @@
-import { House } from 'lucide-react'
-import { Block, Navbar, Page } from 'framework7-react'
+import { Navbar, Page } from 'framework7-react'
+import Placeholder from '@/shared/ui/Placeholder.tsx'
 
 export default function HomePage() {
   return (
     <Page name="home">
-      <Navbar title="Slomic Smarthytte" />
-      <Block>
-        <House size={32} />
-        <p>Velkommen til smarthytta.</p>
-      </Block>
+      <Navbar title="Hytteportalen" large transparent />
+      <Placeholder title="Gjeldende besøk" />
+      <Placeholder title="Neste besøk" />
+      <Placeholder title="Dette året" />
     </Page>
   )
 }

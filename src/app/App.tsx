@@ -6,6 +6,9 @@ import { tabForPath, tabs } from '@/app/tabs.ts'
 import type { TabDefinition } from '@/app/tabs.ts'
 import UpdatePrompt from '@/app/UpdatePrompt.tsx'
 
+// Framework7 passes extra attributes through to the DOM, but ToolbarProps does not type them.
+const navigationLandmark = { role: 'navigation', 'aria-label': 'Hovedmeny' }
+
 export default function App() {
   // React owns the active tab: Framework7 toggles the class itself, but React re-renders would overwrite it.
   const [activeId, setActiveId] = useState(() => tabForPath(window.location.pathname).id)
@@ -21,7 +24,7 @@ export default function App() {
   return (
     <F7App {...f7params}>
       <Views tabs className="safe-areas">
-        <Toolbar tabbar icons bottom>
+        <Toolbar tabbar icons bottom {...navigationLandmark}>
           <ToolbarPane>
             {tabs.map(({ id, label, icon: Icon }) => (
               <Link key={id} tabLink={`#${id}`} tabLinkActive={id === activeId}>

@@ -1,8 +1,12 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { StrictMode } from 'react'
 import { afterEach, describe, expect, it } from 'vitest'
 import App from '@/app/App.tsx'
+
+// The tab links in the bottom toolbar (other links, e.g. segmented buttons, can share their names).
+const tabLink = async (name: string) =>
+  within(await screen.findByRole('navigation', { name: 'Hovedmeny' })).getByRole('link', { name })
 
 describe('App', () => {
   afterEach(() => {
@@ -17,7 +21,7 @@ describe('App', () => {
       </StrictMode>,
     )
 
-    expect(await screen.findByText('Velkommen til smarthytta.')).toBeInTheDocument()
+    expect(await screen.findByText('Gjeldende besøk')).toBeInTheDocument()
   })
 
   it('has a bottom tab bar with the four main views', async () => {
@@ -27,8 +31,9 @@ describe('App', () => {
       </StrictMode>,
     )
 
+    const nav = await screen.findByRole('navigation', { name: 'Hovedmeny' })
     for (const name of ['Hjem', 'Kalender', 'Statistikk', 'Kjøring']) {
-      expect(await screen.findByRole('link', { name })).toBeInTheDocument()
+      expect(within(nav).getByRole('link', { name })).toBeInTheDocument()
     }
   })
 
@@ -40,9 +45,9 @@ describe('App', () => {
       </StrictMode>,
     )
 
-    await user.click(await screen.findByRole('link', { name: 'Kalender' }))
+    await user.click(await tabLink('Kalender'))
 
-    expect(await screen.findByText('Kalender kommer snart.')).toBeInTheDocument()
+    expect(await screen.findByText('Besøk')).toBeInTheDocument()
   })
 
   it('marks only the selected tab as active', async () => {
@@ -53,11 +58,12 @@ describe('App', () => {
       </StrictMode>,
     )
 
-    await user.click(await screen.findByRole('link', { name: 'Kalender' }))
-    await user.click(screen.getByRole('link', { name: 'Statistikk' }))
+    await user.click(await tabLink('Kalender'))
+    await user.click(await tabLink('Statistikk'))
 
-    await screen.findByText('Statistikk kommer snart.')
-    const active = screen
+    await screen.findByText('Dager på hytta per måned')
+    const nav = screen.getByRole('navigation', { name: 'Hovedmeny' })
+    const active = within(nav)
       .getAllByRole('link')
       .filter((l) => l.classList.contains('tab-link-active'))
     expect(active.map((l) => l.textContent)).toEqual(['Statistikk'])
@@ -71,7 +77,7 @@ describe('App', () => {
       </StrictMode>,
     )
 
-    await user.click(await screen.findByRole('link', { name: 'Kjøring' }))
+    await user.click(await tabLink('Kjøring'))
 
     expect(window.location.pathname).toBe('/kjoring/')
   })
@@ -84,7 +90,7 @@ describe('App', () => {
       </StrictMode>,
     )
 
-    const link = await screen.findByRole('link', { name: 'Statistikk' })
+    const link = await tabLink('Statistikk')
 
     expect(link).toHaveClass('tab-link-active')
   })

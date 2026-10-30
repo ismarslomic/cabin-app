@@ -1,14 +1,15 @@
-import { ChartColumn } from 'lucide-react'
-import { Block, Navbar, Page } from 'framework7-react'
+import { Navbar, Page } from 'framework7-react'
+import Placeholder from '@/shared/ui/Placeholder.tsx'
+import ViewSwitcher from '@/shared/ui/ViewSwitcher.tsx'
 
 export default function StatisticsPage() {
   return (
     <Page name="statistics">
-      <Navbar title="Statistikk" />
-      <Block>
-        <ChartColumn size={32} />
-        <p>Statistikk kommer snart.</p>
-      </Block>
+      <Navbar title="Statistikk" large transparent />
+      <ViewSwitcher options={['År', 'Gjester', 'Kjøring']} />
+      <Placeholder title="Nøkkeltall" />
+      <Placeholder title="Dager på hytta per måned" />
+      <Placeholder title="Gjester" />
     </Page>
   )
 }

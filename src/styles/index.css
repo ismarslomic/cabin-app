@@ -1,2 +1,6 @@
 @import 'framework7/css/bundle';
 @import './theme.css';
+
+.placeholder-text {
+  color: var(--cabin-muted);
+}
