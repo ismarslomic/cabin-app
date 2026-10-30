@@ -21,6 +21,7 @@
 
   --cabin-elevated: #f3f6fa;
   --cabin-success: #17794a;
+  --cabin-warning: #a35400;
   --cabin-muted: #566678;
 }
 
@@ -43,5 +44,6 @@
 
   --cabin-elevated: #1d2b39;
   --cabin-success: #5ed998;
+  --cabin-warning: #ffb340;
   --cabin-muted: #98a8ba;
 }

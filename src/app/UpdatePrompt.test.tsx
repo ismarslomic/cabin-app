@@ -4,10 +4,8 @@ import UpdatePrompt from '@/app/UpdatePrompt.tsx'
 import { checkForUpdate, signInAgain, UPDATE_CHECK_INTERVAL_MS } from '@/app/update-check.ts'
 
 const sw = vi.hoisted(() => ({
-  offlineReady: false,
   needRefresh: false,
   updateServiceWorker: vi.fn(() => Promise.resolve()),
-  setOfflineReady: vi.fn(),
   setNeedRefresh: vi.fn(),
   options: undefined as
     | { onRegisteredSW?: (swUrl: string, worker: ServiceWorkerRegistration) => void }
@@ -22,7 +20,6 @@ vi.mock('virtual:pwa-register/react', () => ({
   useRegisterSW: (options: typeof sw.options) => {
     sw.options = options
     return {
-      offlineReady: [sw.offlineReady, sw.setOfflineReady],
       needRefresh: [sw.needRefresh, sw.setNeedRefresh],
       updateServiceWorker: sw.updateServiceWorker,
     }
@@ -40,7 +37,6 @@ vi.mock('framework7-react', () => ({
 describe('UpdatePrompt', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    sw.offlineReady = false
     sw.needRefresh = false
     toast.create.mockReturnValue({ open: toast.open })
     vi.mocked(checkForUpdate).mockResolvedValue('checked')
@@ -50,17 +46,6 @@ describe('UpdatePrompt', () => {
     render(<UpdatePrompt />)
 
     expect(toast.create).not.toHaveBeenCalled()
-  })
-
-  it('tells the user the app works offline', () => {
-    sw.offlineReady = true
-
-    render(<UpdatePrompt />)
-
-    expect(toast.create).toHaveBeenCalledWith(
-      expect.objectContaining({ text: 'Appen fungerer nå uten nett' }),
-    )
-    expect(toast.open).toHaveBeenCalled()
   })
 
   it('offers an update and reloads when the user accepts', () => {
@@ -122,7 +107,11 @@ describe('UpdatePrompt', () => {
       })
 
       const options = toast.create.mock.calls[0]?.[0]
-      expect(options).toMatchObject({ text: 'Økten din er utløpt', closeButtonText: 'Logg inn' })
+      expect(options).toMatchObject({
+        text: 'Økten din er utløpt',
+        closeButtonText: 'Logg inn',
+        cssClass: 'toast-warning',
+      })
 
       options.on.closeButtonClick()
 

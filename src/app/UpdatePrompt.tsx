@@ -3,8 +3,8 @@ import { useRegisterSW } from 'virtual:pwa-register/react'
 import { useEffect, useState } from 'react'
 import { checkForUpdate, signInAgain, UPDATE_CHECK_INTERVAL_MS } from '@/app/update-check.ts'
 
-// Tells the user, with Framework7 toasts, when the app works offline, a new version is ready or the
-// login session has expired. While the app is open it also looks for new versions regularly.
+// Tells the user, with Framework7 toasts, when a new version is ready or the login session has
+// expired. While the app is open it also looks for new versions regularly.
 export default function UpdatePrompt() {
   const [registration, setRegistration] = useState<{
     swUrl: string
@@ -12,7 +12,6 @@ export default function UpdatePrompt() {
   }>()
   const [sessionExpired, setSessionExpired] = useState(false)
   const {
-    offlineReady: [offlineReady, setOfflineReady],
     needRefresh: [needRefresh, setNeedRefresh],
     updateServiceWorker,
   } = useRegisterSW({
@@ -42,19 +41,6 @@ export default function UpdatePrompt() {
   }, [registration])
 
   useEffect(() => {
-    if (!offlineReady) return
-    f7ready((f7) => {
-      f7.toast
-        .create({
-          text: 'Appen fungerer nå uten nett',
-          closeTimeout: 4000,
-          on: { close: () => setOfflineReady(false) },
-        })
-        .open()
-    })
-  }, [offlineReady, setOfflineReady])
-
-  useEffect(() => {
     if (!needRefresh) return
     f7ready((f7) => {
       f7.toast
@@ -77,6 +63,7 @@ export default function UpdatePrompt() {
       f7.toast
         .create({
           text: 'Økten din er utløpt',
+          cssClass: 'toast-warning',
           closeButton: true,
           closeButtonText: 'Logg inn',
           on: {

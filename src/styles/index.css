@@ -4,3 +4,13 @@
 .placeholder-text {
   color: var(--cabin-muted);
 }
+
+/* Toast that needs the user to act (e.g. the login session expired): warning-colored text and button. */
+.toast.toast-warning,
+.toast.toast-warning .toast-button {
+  color: var(--cabin-warning);
+}
+
+.toast.toast-warning .toast-button {
+  font-weight: 600;
+}
