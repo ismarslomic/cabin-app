@@ -1,6 +1,7 @@
 import { act, render } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import UpdatePrompt from '@/app/UpdatePrompt.tsx'
+import { refreshApp } from '@/shared/lib/app-refresh.ts'
 import { checkForUpdate, signInAgain, UPDATE_CHECK_INTERVAL_MS } from '@/app/update-check.ts'
 
 const sw = vi.hoisted(() => ({
@@ -39,7 +40,7 @@ describe('UpdatePrompt', () => {
     vi.clearAllMocks()
     sw.needRefresh = false
     toast.create.mockReturnValue({ open: toast.open })
-    vi.mocked(checkForUpdate).mockResolvedValue('checked')
+    vi.mocked(checkForUpdate).mockResolvedValue('up-to-date')
   })
 
   it('shows nothing when there is nothing to report', () => {
@@ -95,6 +96,54 @@ describe('UpdatePrompt', () => {
       document.dispatchEvent(new Event('visibilitychange'))
 
       expect(checkForUpdate).toHaveBeenCalledWith('/sw.js', worker)
+    })
+
+    it('tells the user the app is up to date after a pull-to-refresh', async () => {
+      register()
+
+      await act(async () => {
+        await refreshApp()
+      })
+
+      expect(checkForUpdate).toHaveBeenCalledWith('/sw.js', worker)
+      expect(toast.create).toHaveBeenCalledWith(
+        expect.objectContaining({ text: 'Du har nyeste versjon' }),
+      )
+    })
+
+    it('says so when a pull-to-refresh cannot check for updates', async () => {
+      vi.mocked(checkForUpdate).mockResolvedValue('skipped')
+      register()
+
+      await act(async () => {
+        await refreshApp()
+      })
+
+      expect(toast.create).toHaveBeenCalledWith(
+        expect.objectContaining({ text: 'Kunne ikke se etter oppdatering' }),
+      )
+    })
+
+    it('stays quiet about a found update (the update toast takes over)', async () => {
+      vi.mocked(checkForUpdate).mockResolvedValue('update-found')
+      register()
+
+      await act(async () => {
+        await refreshApp()
+      })
+
+      expect(toast.create).not.toHaveBeenCalled()
+    })
+
+    it('does not show a notice for background checks', async () => {
+      register()
+
+      await act(async () => {
+        document.dispatchEvent(new Event('visibilitychange'))
+        await Promise.resolve()
+      })
+
+      expect(toast.create).not.toHaveBeenCalled()
     })
 
     it('offers to sign in again when the session has expired', async () => {

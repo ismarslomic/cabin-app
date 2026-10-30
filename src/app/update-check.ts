@@ -3,7 +3,7 @@ import { appFetch, SessionExpiredError } from '@/shared/lib/http.ts'
 /** How often an open app looks for a new version (it also checks when it returns to the foreground). */
 export const UPDATE_CHECK_INTERVAL_MS = 10 * 60 * 1000
 
-export type UpdateCheckResult = 'checked' | 'session-expired' | 'skipped'
+export type UpdateCheckResult = 'update-found' | 'up-to-date' | 'session-expired' | 'skipped'
 
 /**
  * Looks for a new service worker. The browser's own check cannot tell us when Cloudflare Access
@@ -19,8 +19,9 @@ export async function checkForUpdate(
 
   try {
     const response = await appFetch(swUrl, { cache: 'no-store' })
-    if (response.ok) await registration.update()
-    return 'checked'
+    if (!response.ok) return 'skipped'
+    await registration.update()
+    return registration.installing || registration.waiting ? 'update-found' : 'up-to-date'
   } catch (error) {
     if (error instanceof SessionExpiredError) return 'session-expired'
     // Network trouble: try again at the next check.

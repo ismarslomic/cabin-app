@@ -11,7 +11,12 @@ export const heroes: Hero[] = [
   { src: '/images/hero-forest.webp', position: 'center 30%' },
 ]
 
-/** A random hero; `random` returns a number in [0, 1) and is injectable for tests. */
-export function pickHero(random: () => number = Math.random): Hero {
-  return heroes[Math.floor(random() * heroes.length)] ?? heroes[0]
+/**
+ * A random hero, never `current` when there is a choice. `random` returns a number in [0, 1) and is
+ * injectable for tests.
+ */
+export function pickHero(random: () => number = Math.random, current?: Hero): Hero {
+  const choices = heroes.filter((hero) => hero !== current)
+  const pool = choices.length > 0 ? choices : heroes
+  return pool[Math.floor(random() * pool.length)] ?? heroes[0]
 }

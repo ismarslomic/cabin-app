@@ -19,6 +19,23 @@
     var(--hero-image) var(--hero-position) / cover no-repeat;
 }
 
+/* A new photo fades in over the previous one. */
+.home-hero-enter {
+  animation: home-hero-fade-in 600ms ease-out;
+}
+
+@keyframes home-hero-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-hero-enter {
+    animation-duration: 1ms;
+  }
+}
+
 /* Keeps the cards below the photo, so their section titles never sit on the image. Room for the greeting later. */
 .home-hero-spacer {
   height: 120px;
