@@ -18,8 +18,8 @@ export default defineConfig({
         short_name: 'Smarthytte',
         description: 'Smarthytte-appen for hytta til familien Slomic',
         lang: 'nb',
-        theme_color: '#007aff',
-        background_color: '#ffffff',
+        theme_color: '#090f17',
+        background_color: '#090f17',
         display: 'standalone',
         icons: [
           { src: 'pwa-64x64.png', sizes: '64x64', type: 'image/png' },

@@ -1,0 +1,47 @@
+/*
+ * Cabin palette from the design mockup: deep blue-black surfaces with a blue primary and a green
+ * success color. Dark values come straight from the mockup; light values are derived from them
+ * (darker primary and success so they stay readable on white). All pairs pass WCAG AA (4.5:1).
+ * Overrides Framework7's iOS defaults.
+ */
+:root {
+  --f7-theme-color: #0a66c9;
+  --f7-theme-color-rgb: 10, 102, 201;
+  --f7-theme-color-shade: #0857ab;
+  --f7-theme-color-tint: #2f7dd1;
+
+  --f7-page-bg-color: #eef2f7;
+  --f7-block-strong-bg-color: #fff;
+  --f7-list-strong-bg-color: #fff;
+  --f7-bars-bg-color: #eef2f7;
+  --f7-button-fill-text-color: #fff;
+  --f7-text-color: #0e1621;
+  --f7-block-title-text-color: #566678;
+  --f7-block-header-text-color: #566678;
+
+  --cabin-elevated: #f3f6fa;
+  --cabin-success: #17794a;
+  --cabin-muted: #566678;
+}
+
+.ios.dark {
+  --f7-theme-color: #5ea9ff;
+  --f7-theme-color-rgb: 94, 169, 255;
+  --f7-theme-color-shade: #5090d9;
+  --f7-theme-color-tint: #76b6ff;
+
+  --f7-page-bg-color: #090f17;
+  --f7-block-strong-bg-color: #15202b;
+  --f7-list-strong-bg-color: #15202b;
+  --f7-bars-bg-color: rgba(16, 27, 39, 0.6);
+  --f7-glass-bg-color: rgba(16, 27, 39, 0.6);
+  /* White on the pale dark-mode blue fails contrast; use the page background color instead. */
+  --f7-button-fill-text-color: #090f17;
+  --f7-text-color: #f5f7fb;
+  --f7-block-title-text-color: #98a8ba;
+  --f7-block-header-text-color: #98a8ba;
+
+  --cabin-elevated: #1d2b39;
+  --cabin-success: #5ed998;
+  --cabin-muted: #98a8ba;
+}
