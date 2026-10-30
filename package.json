@@ -16,7 +16,9 @@
     "format:check": "oxfmt --check",
     "check": "pnpm format:check && pnpm lint && pnpm build && pnpm test",
     "preview": "vite preview",
-    "generate-pwa-assets": "pwa-assets-generator"
+    "generate-pwa-assets": "pwa-assets-generator",
+    "sync-api-spec": "gh api repos/ismarslomic/cabin-visits-kotlin/contents/openapi/cabin-visits.json -H 'Accept: application/vnd.github.raw' > openapi/cabin-visits.json && pnpm generate-api",
+    "generate-api": "pnpm dlx openapi-typescript@7.13.0 openapi/cabin-visits.json -o src/shared/api/schema.ts"
   },
   "dependencies": {
     "framework7": "^9.2.0",
