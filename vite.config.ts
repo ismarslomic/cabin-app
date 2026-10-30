@@ -1,7 +1,12 @@
 import { fileURLToPath } from 'node:url'
 import react from '@vitejs/plugin-react'
+import { loadEnv } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 import { defineConfig } from 'vitest/config'
+
+// The API is on the same origin as the app in production (the tunnel routes /api). For `pnpm dev`, set
+// API_PROXY_TARGET (e.g. in the git-ignored .env.local) to the origin that serves it.
+const apiProxyTarget = loadEnv('development', process.cwd(), '').API_PROXY_TARGET
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -42,6 +47,9 @@ export default defineConfig({
       },
     }),
   ],
+  server: {
+    proxy: apiProxyTarget ? { '/api': { target: apiProxyTarget, changeOrigin: true } } : undefined,
+  },
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },

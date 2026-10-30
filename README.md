@@ -27,6 +27,8 @@ pnpm dev
 | `pnpm test:watch`          | Run tests in watch mode                                                                              |
 | `pnpm test:coverage`       | Run tests with a coverage report (`coverage/`)                                                       |
 | `pnpm generate-pwa-assets` | Regenerate PWA icons from `public/favicon.svg`                                                       |
+| `pnpm sync-api-spec`       | Download the backend OpenAPI spec (needs `gh`) and regenerate the API types                          |
+| `pnpm generate-api`        | Regenerate `src/shared/api/schema.ts` from `openapi/cabin-visits.json`                               |
 | `pnpm typecheck`           | Type-check only (`tsc -b`)                                                                           |
 | `pnpm lint`                | Run oxlint (type-aware)                                                                              |
 | `pnpm format`              | Format all files with oxfmt                                                                          |
@@ -73,6 +75,14 @@ pnpm dev
 - **`useCredentials: true`** puts `crossorigin="use-credentials"` on the manifest link. Browsers normally fetch the manifest without cookies, so behind Cloudflare Access it would be redirected to the login page and install would fail. It is harmless for same-origin requests, so it also works locally and in the container.
 - Installing needs HTTPS in production (localhost is exempt) and the server must serve `manifest.webmanifest` as `application/manifest+json`.
 - `virtual:pwa-register/react` is a virtual module; its types come from `vite-plugin-pwa/react` in `tsconfig.app.json`. In tests, mock it (see `UpdatePrompt.test.tsx`); in plain jsdom it registers nothing.
+
+## Backend API
+
+- The backend is `cabin-visits-kotlin`. Its OpenAPI spec is copied to `openapi/cabin-visits.json`; `pnpm sync-api-spec` pulls the latest from GitHub (needs `gh`) and runs `pnpm generate-api`, which writes the TypeScript types to `src/shared/api/schema.ts`. Both files are committed and excluded from oxfmt and oxlint. Commit the spec and the types together.
+- The generator runs through `pnpm dlx openapi-typescript@7.13.0`, not as a dependency: it needs the TypeScript JS API, which TypeScript 7 (the Go port) does not have, so `dlx` brings its own TypeScript 5.
+- The API is on the **same origin** as the app: the Cloudflare Tunnel routes `/api/*` to the backend behind Access. The code calls relative `/api/...` URLs through `appFetch`, so there is no hostname in the repo, no CORS and no CSP change. For `pnpm dev`, set `API_PROXY_TARGET` (the origin that serves `/api`) in the git-ignored `.env.local`; Vite then proxies `/api` to it. Without it `/api` calls fail in dev and the UI shows its error states.
+- The profile feature (`features/profile`) expects `GET /api/me` to also return `firstName`, `lastName`, `birthYear`, `gender` and `isFamily` (the spec only has `id`, `name`, `email`, `role` today). Its `Profile` type in `api/types.ts` adds them by hand; replace it with the generated type when the backend and the spec have them.
+- Avatars come from `GET /api/guests/{id}/avatar` through `appFetch` and are shown as blob URLs (`img-src` already allows `blob:`).
 
 ## Icons
 

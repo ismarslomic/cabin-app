@@ -61,6 +61,12 @@ Group by feature, not by technical layer. Full rules in `README.md` ("Folder str
 - Direct pushes to `main` are allowed for the owner; force pushes and deleting `main` are blocked by the ruleset in `.github/rulesets/main.json`. It requires the checks named `check` (job in `ci.yml`) and `image` (job in `docker.yml`): do not rename those jobs without updating the ruleset.
 - Do not create releases, change repository settings or visibility, or publish anything without the user asking: those are public actions.
 
+## Backend API
+
+- Types come from `openapi/cabin-visits.json` via `pnpm sync-api-spec` / `pnpm generate-api` (`src/shared/api/schema.ts`, generated: never edit by hand). Import them as `components['schemas'][...]`. See the "Backend API" chapter in `README.md`.
+- Call the API only with relative `/api/...` URLs through `appFetch`; never hard-code the backend hostname. In dev, `API_PROXY_TARGET` in the git-ignored `.env.local` sets the proxy target.
+- A shared per-session cache (`features/profile/api/profile-store.ts`) holds the profile; navbars show `ProfileNavRight` from `features/profile/index.ts`.
+
 ## Icons
 
 - Use `lucide-react` only; import each icon by name (`import { House } from 'lucide-react'`). Never `import *` or look icons up by string, which breaks tree-shaking.
