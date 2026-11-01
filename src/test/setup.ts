@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom/vitest'
 import { cleanup } from '@testing-library/react'
-import { afterEach, vi } from 'vitest'
+import { afterEach, beforeEach, vi } from 'vitest'
 
 // Vitest globals are off, so Testing Library cannot register its own cleanup.
 afterEach(cleanup)
@@ -16,3 +16,8 @@ vi.stubGlobal('matchMedia', (query: string): MediaQueryList => ({
   removeListener: vi.fn(),
   dispatchEvent: vi.fn(),
 }))
+
+// No backend in tests: API calls fail like a network error unless a test stubs fetch itself.
+beforeEach(() => {
+  vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')))
+})

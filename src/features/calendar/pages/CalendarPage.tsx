@@ -1,4 +1,5 @@
 import { Navbar } from 'framework7-react'
+import { ProfileNavRight } from '@/features/profile/index.ts'
 import AppPage from '@/shared/ui/AppPage.tsx'
 import Placeholder from '@/shared/ui/Placeholder.tsx'
 import ViewSwitcher from '@/shared/ui/ViewSwitcher.tsx'
@@ -7,6 +8,7 @@ export default function CalendarPage() {
   return (
     <AppPage name="calendar">
       <Navbar title="Kalender" large transparent>
+        <ProfileNavRight />
         <ViewSwitcher options={['Måned', 'Liste', 'År']} />
       </Navbar>
       <Placeholder title="Kalender" />

@@ -2,6 +2,7 @@ import type { Router } from 'framework7/types'
 import { calendarRoutes } from '@/features/calendar/index.ts'
 import { drivingRoutes } from '@/features/driving/index.ts'
 import { homeRoutes } from '@/features/home/index.ts'
+import { profileRoutes } from '@/features/profile/index.ts'
 import { statisticsRoutes } from '@/features/statistics/index.ts'
 
 export const routes: Router.RouteParameters[] = [
@@ -9,4 +10,5 @@ export const routes: Router.RouteParameters[] = [
   ...calendarRoutes,
   ...statisticsRoutes,
   ...drivingRoutes,
+  ...profileRoutes,
 ]

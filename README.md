@@ -27,6 +27,8 @@ pnpm dev
 | `pnpm test:watch`          | Run tests in watch mode                                                                              |
 | `pnpm test:coverage`       | Run tests with a coverage report (`coverage/`)                                                       |
 | `pnpm generate-pwa-assets` | Regenerate PWA icons from `public/favicon.svg`                                                       |
+| `pnpm sync-api-spec`       | Download the backend OpenAPI spec (needs `gh`) and regenerate the API types                          |
+| `pnpm generate-api`        | Regenerate `src/shared/api/schema.ts` from `openapi/cabin-visits.json`                               |
 | `pnpm typecheck`           | Type-check only (`tsc -b`)                                                                           |
 | `pnpm lint`                | Run oxlint (type-aware)                                                                              |
 | `pnpm format`              | Format all files with oxfmt                                                                          |
@@ -74,6 +76,14 @@ pnpm dev
 - Installing needs HTTPS in production (localhost is exempt) and the server must serve `manifest.webmanifest` as `application/manifest+json`.
 - `virtual:pwa-register/react` is a virtual module; its types come from `vite-plugin-pwa/react` in `tsconfig.app.json`. In tests, mock it (see `UpdatePrompt.test.tsx`); in plain jsdom it registers nothing.
 
+## Backend API
+
+- The backend is `cabin-visits-kotlin`. Its OpenAPI spec is copied to `openapi/cabin-visits.json`; `pnpm sync-api-spec` pulls the latest from GitHub (needs `gh`) and runs `pnpm generate-api`, which writes the TypeScript types to `src/shared/api/schema.ts`. Both files are committed and excluded from oxfmt and oxlint. Commit the spec and the types together.
+- The generator runs through `pnpm dlx openapi-typescript@7.13.0`, not as a dependency: it needs the TypeScript JS API, which TypeScript 7 (the Go port) does not have, so `dlx` brings its own TypeScript 5.
+- The API is on the **same origin** as the app: the Cloudflare Tunnel routes `/api/*` to the backend behind Access. The code calls relative `/api/...` URLs through `appFetch`, so there is no hostname in the repo, no CORS and no CSP change. For `pnpm dev`, put two values in the git-ignored `.env.local` (never commit them): `API_PROXY_TARGET`, the origin that serves `/api`, and `CF_ACCESS_JWT`, your Cloudflare Access token (the JWT only, the value of the `CF_Authorization` cookie, without the `CF_Authorization=` prefix). Vite then proxies `/api` to the target and sends the token as the `CF_Authorization` cookie, which is how Access recognizes a logged-in browser. Get the token with `cloudflared access login https://<api-host>` followed by `cloudflared access token -app=https://<api-host>` (or copy the `CF_Authorization` cookie from a logged-in browser); it expires with your Access session, so repeat when `/api` calls start failing with "session expired". The proxy exists only in the Vite dev server (`server.proxy`, also used by `vite preview`): `vite build` ignores it, the image is nginx serving static files, and `.dockerignore` keeps `.env*` out of the build context. Without `API_PROXY_TARGET`, `/api` calls fail in dev and the UI shows its error states.
+- The profile feature (`features/profile`) reads `GET /api/me` and saves with `POST /api/me` (`UserPrincipal` and `MeUpdate` in the spec). The user can change only first name, last name, birth year and gender. Email is read-only by design: changing it would affect the Cloudflare Access session and policy, and the backend ignores it on `POST /api/me`.
+- Avatars come from `GET /api/guests/{id}/avatar` through `appFetch` and are shown as blob URLs (`img-src` already allows `blob:`).
+
 ## Icons
 
 - Import each icon by name where it is used: `import { House } from 'lucide-react'`. The package is tree-shaken, so only imported icons end up in the bundle (one icon cost about 3 kB raw, 1.5 kB gzipped, including lucide's small runtime). Never `import * as` the package or build icons from a name string, which would pull in everything.
@@ -90,11 +100,12 @@ pnpm dev
 - Use `userEvent.setup()` and `await user.click(...)`, not `fireEvent`.
 - `src/test/setup.ts` registers the jest-dom matchers, cleans up after each test and stubs `window.matchMedia` (missing in jsdom, needed by Framework7).
 - Render Framework7 trees inside `StrictMode` like `main.tsx` does (see `App.test.tsx`). Framework7 pages render asynchronously, so use `findBy*` queries.
+- **Coverage rules** (`codecov.yml`, enforced on every PR): total coverage may drop at most 2 points, and the lines a PR changes must be covered at least 80%. Check with `pnpm test:coverage` before opening a PR. The generated `src/shared/api/schema.ts` is excluded.
 - `src/test/setup.test.tsx` is a smoke test of the tooling itself. Keep it so a broken setup is obvious.
 
 ## Continuous integration
 
-`.github/workflows/ci.yml` runs on every pull request and on pushes to `main`: install with the frozen lockfile, format check, lint, build (with type-check) and tests with coverage. It is the same as `pnpm check`, with coverage on, followed by an upload of `coverage/lcov.info` to [Codecov](https://codecov.io/gh/ismarslomic/cabin-app) (the `CODECOV_TOKEN` repository secret; a failed upload fails the build). Node comes from `.nvmrc` and the pnpm version from `packageManager` in `package.json`, so CI and your machine use the same versions. `codecov.yml` sets the pull request checks: total coverage may drop at most 2 points, and the lines changed in a PR are compared against the project average. Coverage settings are in the `test.coverage` block of `vite.config.ts`: Vitest 5 only reports files that tests import unless `include` is set, and it excludes nothing by default, so tests, test setup and `main.tsx` are excluded explicitly.
+`.github/workflows/ci.yml` runs on every pull request and on pushes to `main`: install with the frozen lockfile, format check, lint, build (with type-check) and tests with coverage. It is the same as `pnpm check`, with coverage on, followed by an upload of `coverage/lcov.info` to [Codecov](https://codecov.io/gh/ismarslomic/cabin-app) (the `CODECOV_TOKEN` repository secret; a failed upload fails the build). Node comes from `.nvmrc` and the pnpm version from `packageManager` in `package.json`, so CI and your machine use the same versions. `codecov.yml` sets the pull request checks: total coverage may drop at most 2 points, and the lines changed in a PR must be covered at least 80%. Coverage settings are in the `test.coverage` block of `vite.config.ts`: Vitest 5 only reports files that tests import unless `include` is set, and it excludes nothing by default, so tests, test setup, `main.tsx` and the generated `schema.ts` are excluded explicitly.
 
 ## Docker
 

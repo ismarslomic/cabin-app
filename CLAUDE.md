@@ -21,6 +21,7 @@ Group by feature, not by technical layer. Full rules in `README.md` ("Folder str
 - `src/shared/`: only when 2+ features need it. `src/styles/`: global styling only.
 - Features never import another feature's internals, and never import from `app/`.
 - Use the `@/` alias for `src/`, not `../../..`.
+- **Coverage rules** (`codecov.yml`): a PR may lower total coverage by at most 2 points, and the lines it changes must be covered at least 80%. Write tests with the code, run `pnpm test:coverage` before committing and check the changed files in the report; if a changed file is under 80%, add tests before asking to commit.
 - Tests sit next to the code (`Foo.test.tsx`). Import `describe`/`it`/`expect` from `vitest` (no globals). Query by role/label, use `userEvent`, not `fireEvent`. Write or update a test with every feature change.
 
 ## Framework7
@@ -61,6 +62,12 @@ Group by feature, not by technical layer. Full rules in `README.md` ("Folder str
 - Direct pushes to `main` are allowed for the owner; force pushes and deleting `main` are blocked by the ruleset in `.github/rulesets/main.json`. It requires the checks named `check` (job in `ci.yml`) and `image` (job in `docker.yml`): do not rename those jobs without updating the ruleset.
 - Do not create releases, change repository settings or visibility, or publish anything without the user asking: those are public actions.
 
+## Backend API
+
+- Types come from `openapi/cabin-visits.json` via `pnpm sync-api-spec` / `pnpm generate-api` (`src/shared/api/schema.ts`, generated: never edit by hand). Import them as `components['schemas'][...]`. See the "Backend API" chapter in `README.md`.
+- Call the API only with relative `/api/...` URLs through `appFetch`; never hard-code the backend hostname. In dev, `API_PROXY_TARGET` and `CF_ACCESS_JWT` in the git-ignored `.env.local` set the Vite proxy target and the Access cookie (README "Backend API"). The proxy is dev-only: never add auth tokens to app code or the build.
+- A shared per-session cache (`features/profile/api/profile-store.ts`) holds the profile; navbars show `ProfileNavRight` from `features/profile/index.ts`.
+
 ## Icons
 
 - Use `lucide-react` only; import each icon by name (`import { House } from 'lucide-react'`). Never `import *` or look icons up by string, which breaks tree-shaking.
@@ -76,6 +83,8 @@ Group by feature, not by technical layer. Full rules in `README.md` ("Folder str
 
 ## Workflow
 
+- **Confirm the plan before executing it.** Present the plan (decisions, files, approach) and wait for an explicit go before writing code. An earlier answer to a question is not a go.
+- **Confirm before every commit.** Show what will be committed (files and message) and wait for approval each time; approval for one commit does not cover the next.
 - Small, focused commits; end commit messages with the Co-Authored-By line. Never force push.
 - Match existing style. Do not reformat files you did not touch.
 - Check the library's current docs before configuring it; do not rely on memory.
