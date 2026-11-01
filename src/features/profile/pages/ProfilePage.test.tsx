@@ -36,7 +36,7 @@ function stubApi(options: { me?: () => Response; posts?: unknown[]; update?: Res
 
 const openEditPage = async (user: ReturnType<typeof userEvent.setup>) => {
   await user.click(await screen.findByRole('link', { name: 'Rediger' }))
-  await screen.findByRole('textbox', { name: 'Fornavn' })
+  await screen.findByDisplayValue('Kari')
 }
 
 const openProfile = async () => {
@@ -106,10 +106,10 @@ describe('profile', () => {
     const user = await openProfile()
 
     await openEditPage(user)
-    const firstName = screen.getByRole('textbox', { name: 'Fornavn' })
+    const firstName = screen.getByDisplayValue('Kari')
     await user.clear(firstName)
     await user.type(firstName, 'Kristin')
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Kjønn' }), 'MALE')
+    await user.selectOptions(screen.getByRole('combobox'), 'MALE')
     await user.click(screen.getByRole('link', { name: 'Lagre' }))
 
     await vi.waitFor(() => {
@@ -119,12 +119,28 @@ describe('profile', () => {
     })
   })
 
+  it('cannot save until something has changed or when a required field is empty', async () => {
+    stubApi()
+    const user = await openProfile()
+
+    await openEditPage(user)
+    const save = screen.getByRole('link', { name: 'Lagre' })
+    expect(save).toHaveClass('disabled')
+
+    const firstName = screen.getByDisplayValue('Kari')
+    await user.type(firstName, 'x')
+    expect(save).not.toHaveClass('disabled')
+
+    await user.clear(firstName)
+    expect(save).toHaveClass('disabled')
+  })
+
   it('blocks saving an invalid birth year', async () => {
     stubApi()
     const user = await openProfile()
 
     await openEditPage(user)
-    const year = screen.getByRole('textbox', { name: 'Fødselsår' })
+    const year = screen.getByDisplayValue('1985')
     await user.clear(year)
     await user.type(year, '1800')
 
@@ -136,6 +152,7 @@ describe('profile', () => {
     const user = await openProfile()
 
     await openEditPage(user)
+    await user.type(screen.getByDisplayValue('Kari'), 'x')
     await user.click(screen.getByRole('link', { name: 'Lagre' }))
 
     expect(await screen.findByText('Du har ikke tilgang til appen.')).toBeInTheDocument()
