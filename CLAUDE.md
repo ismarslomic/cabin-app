@@ -64,7 +64,7 @@ Group by feature, not by technical layer. Full rules in `README.md` ("Folder str
 ## Backend API
 
 - Types come from `openapi/cabin-visits.json` via `pnpm sync-api-spec` / `pnpm generate-api` (`src/shared/api/schema.ts`, generated: never edit by hand). Import them as `components['schemas'][...]`. See the "Backend API" chapter in `README.md`.
-- Call the API only with relative `/api/...` URLs through `appFetch`; never hard-code the backend hostname. In dev, `API_PROXY_TARGET` in the git-ignored `.env.local` sets the proxy target.
+- Call the API only with relative `/api/...` URLs through `appFetch`; never hard-code the backend hostname. In dev, `API_PROXY_TARGET` and `CF_ACCESS_JWT` in the git-ignored `.env.local` set the Vite proxy target and the Access cookie (README "Backend API"). The proxy is dev-only: never add auth tokens to app code or the build.
 - A shared per-session cache (`features/profile/api/profile-store.ts`) holds the profile; navbars show `ProfileNavRight` from `features/profile/index.ts`.
 
 ## Icons

@@ -4,9 +4,14 @@ import { loadEnv } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 import { defineConfig } from 'vitest/config'
 
-// The API is on the same origin as the app in production (the tunnel routes /api). For `pnpm dev`, set
-// API_PROXY_TARGET (e.g. in the git-ignored .env.local) to the origin that serves it.
-const apiProxyTarget = loadEnv('development', process.cwd(), '').API_PROXY_TARGET
+// Dev only: `server.proxy` is used by the Vite dev server (and `vite preview`), never by `vite build`,
+// and the production image is nginx serving the built files. The API is on the same origin as the app
+// in production (the tunnel routes /api). For `pnpm dev`, set in the git-ignored `.env.local`:
+// API_PROXY_TARGET: the origin that serves /api;
+// CF_ACCESS_JWT: the value of your `CF_Authorization` cookie, sent so Cloudflare Access sees you logged in.
+const devEnv = loadEnv('development', process.cwd(), '')
+const apiProxyTarget = devEnv.API_PROXY_TARGET
+const accessJwt = devEnv.CF_ACCESS_JWT
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -48,7 +53,15 @@ export default defineConfig({
     }),
   ],
   server: {
-    proxy: apiProxyTarget ? { '/api': { target: apiProxyTarget, changeOrigin: true } } : undefined,
+    proxy: apiProxyTarget
+      ? {
+          '/api': {
+            target: apiProxyTarget,
+            changeOrigin: true,
+            headers: accessJwt ? { Cookie: `CF_Authorization=${accessJwt}` } : undefined,
+          },
+        }
+      : undefined,
   },
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
