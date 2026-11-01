@@ -19,7 +19,7 @@ export async function fetchProfile(): Promise<Profile> {
 
 const updateErrors: Record<number, string> = {
   400: 'Ugyldig verdi. Sjekk feltene og prøv igjen.',
-  403: 'Du har ikke tilgang til å endre dette.',
+  403: 'Du har ikke tilgang til appen.',
 }
 
 export async function updateProfile(update: ProfileUpdate): Promise<void> {

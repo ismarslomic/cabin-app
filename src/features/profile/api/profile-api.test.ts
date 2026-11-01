@@ -49,7 +49,7 @@ describe('profile api', () => {
 
   it.each([
     [400, 'Ugyldig verdi. Sjekk feltene og prøv igjen.'],
-    [403, 'Du har ikke tilgang til å endre dette.'],
+    [403, 'Du har ikke tilgang til appen.'],
     [500, 'Kunne ikke lagre profilen.'],
   ])('explains a %s on update in Norwegian', async (status, message) => {
     fetchMock.mockResolvedValue(new Response(null, { status }))

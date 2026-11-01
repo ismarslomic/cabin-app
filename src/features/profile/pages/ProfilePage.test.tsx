@@ -138,6 +138,6 @@ describe('profile', () => {
     await openEditPage(user)
     await user.click(screen.getByRole('link', { name: 'Lagre' }))
 
-    expect(await screen.findByText('Du har ikke tilgang til å endre dette.')).toBeInTheDocument()
+    expect(await screen.findByText('Du har ikke tilgang til appen.')).toBeInTheDocument()
   })
 })
