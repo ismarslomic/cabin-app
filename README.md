@@ -100,11 +100,12 @@ pnpm dev
 - Use `userEvent.setup()` and `await user.click(...)`, not `fireEvent`.
 - `src/test/setup.ts` registers the jest-dom matchers, cleans up after each test and stubs `window.matchMedia` (missing in jsdom, needed by Framework7).
 - Render Framework7 trees inside `StrictMode` like `main.tsx` does (see `App.test.tsx`). Framework7 pages render asynchronously, so use `findBy*` queries.
+- **Coverage rules** (`codecov.yml`, enforced on every PR): total coverage may drop at most 2 points, and the lines a PR changes must be covered at least 80%. Check with `pnpm test:coverage` before opening a PR. The generated `src/shared/api/schema.ts` is excluded.
 - `src/test/setup.test.tsx` is a smoke test of the tooling itself. Keep it so a broken setup is obvious.
 
 ## Continuous integration
 
-`.github/workflows/ci.yml` runs on every pull request and on pushes to `main`: install with the frozen lockfile, format check, lint, build (with type-check) and tests with coverage. It is the same as `pnpm check`, with coverage on, followed by an upload of `coverage/lcov.info` to [Codecov](https://codecov.io/gh/ismarslomic/cabin-app) (the `CODECOV_TOKEN` repository secret; a failed upload fails the build). Node comes from `.nvmrc` and the pnpm version from `packageManager` in `package.json`, so CI and your machine use the same versions. `codecov.yml` sets the pull request checks: total coverage may drop at most 2 points, and the lines changed in a PR are compared against the project average. Coverage settings are in the `test.coverage` block of `vite.config.ts`: Vitest 5 only reports files that tests import unless `include` is set, and it excludes nothing by default, so tests, test setup and `main.tsx` are excluded explicitly.
+`.github/workflows/ci.yml` runs on every pull request and on pushes to `main`: install with the frozen lockfile, format check, lint, build (with type-check) and tests with coverage. It is the same as `pnpm check`, with coverage on, followed by an upload of `coverage/lcov.info` to [Codecov](https://codecov.io/gh/ismarslomic/cabin-app) (the `CODECOV_TOKEN` repository secret; a failed upload fails the build). Node comes from `.nvmrc` and the pnpm version from `packageManager` in `package.json`, so CI and your machine use the same versions. `codecov.yml` sets the pull request checks: total coverage may drop at most 2 points, and the lines changed in a PR must be covered at least 80%. Coverage settings are in the `test.coverage` block of `vite.config.ts`: Vitest 5 only reports files that tests import unless `include` is set, and it excludes nothing by default, so tests, test setup, `main.tsx` and the generated `schema.ts` are excluded explicitly.
 
 ## Docker
 

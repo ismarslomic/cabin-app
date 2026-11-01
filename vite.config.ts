@@ -73,7 +73,13 @@ export default defineConfig({
       provider: 'v8',
       // Vitest 5 only reports files imported by tests unless include is set.
       include: ['src/**/*.{ts,tsx}'],
-      exclude: ['src/**/*.test.{ts,tsx}', 'src/test/**', 'src/main.tsx'],
+      exclude: [
+        'src/**/*.test.{ts,tsx}',
+        'src/test/**',
+        'src/main.tsx',
+        // Generated from the OpenAPI spec.
+        'src/shared/api/schema.ts',
+      ],
       reporter: ['text', 'lcov'],
     },
   },

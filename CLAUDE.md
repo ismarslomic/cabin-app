@@ -21,6 +21,7 @@ Group by feature, not by technical layer. Full rules in `README.md` ("Folder str
 - `src/shared/`: only when 2+ features need it. `src/styles/`: global styling only.
 - Features never import another feature's internals, and never import from `app/`.
 - Use the `@/` alias for `src/`, not `../../..`.
+- **Coverage rules** (`codecov.yml`): a PR may lower total coverage by at most 2 points, and the lines it changes must be covered at least 80%. Write tests with the code, run `pnpm test:coverage` before committing and check the changed files in the report; if a changed file is under 80%, add tests before asking to commit.
 - Tests sit next to the code (`Foo.test.tsx`). Import `describe`/`it`/`expect` from `vitest` (no globals). Query by role/label, use `userEvent`, not `fireEvent`. Write or update a test with every feature change.
 
 ## Framework7
