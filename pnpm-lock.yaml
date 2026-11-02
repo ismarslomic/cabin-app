@@ -167,11 +167,11 @@ importers:
   .:
     dependencies:
       framework7:
-        specifier: ^9.2.0
-        version: 9.2.0
+        specifier: ^9.3.0
+        version: 9.3.0
       framework7-react:
-        specifier: ^9.2.0
-        version: 9.2.0
+        specifier: ^9.3.0
+        version: 9.3.0
       lucide-react:
         specifier: ^1.63.0
         version: 1.63.0(@types/react@19.3.0)(react@19.3.1)
@@ -2140,11 +2140,11 @@ packages:
     resolution: {integrity: sha512-gIXjKqtFuWEgzFRJA9WCQeSJLZDjgJUOMCMzxtvFq/37KojM1BFGufqsCy0r4qSQmYLsZYMeyRqzIWOMup03sw==}
     engines: {node: '>=14'}
 
-  framework7-react@9.2.0:
-    resolution: {integrity: sha512-US8RnxWY/PV1ohYBYlt9D/wYhdjy2sD8CAStiSzLGoJTVdXFtGJBSIeFa1MtabcLL7x9cgC0bkjv+6lHXBQl8Q==}
+  framework7-react@9.3.0:
+    resolution: {integrity: sha512-LYPrwVo4iCW6beVKgpk2fSk5Ho83VlIFpORm8MQUfK9Qcc3v0+hGmpfIwEeFZCaOU20+PocFa+vgsvDqD9Pjbg==}
 
-  framework7@9.2.0:
-    resolution: {integrity: sha512-vakFWISZt/61eYZhACeU7ji4OmX69hxLc70jE8QpLjYLoEXzKcboVA01GbPbavhM4pkgvoFWwvoklEv/fNB28w==}
+  framework7@9.3.0:
+    resolution: {integrity: sha512-mNRzCY47KstmPWq0LGkaCsRSUUK4EcxkYvz9bIffevRAf8usm4qKXLZkloJdF7FGyn8W3BHhTyNmJdMkmjkNKw==}
 
   fs-extra@9.1.0:
     resolution: {integrity: sha512-hcg3ZmepS30/7BSFqRvoo3DOMQu7IjqxO5nCDt+zM9XWjb33Wg7ziNT+Qvqbuc3+gWpzO02JubVyk2G4Zvo1OQ==}
@@ -4916,9 +4916,9 @@ snapshots:
       cross-spawn: 7.0.6
       signal-exit: 4.1.0
 
-  framework7-react@9.2.0: {}
+  framework7-react@9.3.0: {}
 
-  framework7@9.2.0:
+  framework7@9.3.0:
     dependencies:
       dom7: 4.0.6
       htm: 3.1.1
