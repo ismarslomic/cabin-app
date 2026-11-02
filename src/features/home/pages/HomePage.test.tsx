@@ -29,6 +29,7 @@ const current = {
   endDate: '2026-11-03',
   remainingNights: 1,
   reservationOrder: 42,
+  reservationOrderInYear: 7,
   guests: [guest('g1', 'Kari'), guest('g2', 'Ola')],
 }
 
@@ -37,6 +38,7 @@ const next = {
   endDate: '2026-11-12',
   daysUntil: 8,
   reservationOrder: 43,
+  reservationOrderInYear: 8,
   guests: ['a', 'b', 'c', 'd', 'e'].map((id) => guest(id, id.toUpperCase())),
 }
 
@@ -124,7 +126,7 @@ describe('HomePage', () => {
     expect(await screen.findByText('Gjeldende besøk')).toBeInTheDocument()
     expect(screen.getByText('søn 1. nov – tir 3. nov')).toBeInTheDocument()
     expect(screen.getByText('På hytta nå · 1 natt igjen')).toBeInTheDocument()
-    expect(screen.getByText('#42')).toBeInTheDocument()
+    expect(screen.getByText('#7')).toBeInTheDocument()
     expect(screen.getByRole('img', { name: 'Gjester: Kari, Ola' })).toBeInTheDocument()
     expect(screen.queryByText('Neste besøk')).not.toBeInTheDocument()
     const button = screen.getByRole('link', { name: /Reserver ny/ })
@@ -139,7 +141,7 @@ describe('HomePage', () => {
 
     expect(await screen.findByText('Neste besøk')).toBeInTheDocument()
     expect(screen.getByText('Om 8 dager')).toBeInTheDocument()
-    expect(screen.getByText('#43')).toBeInTheDocument()
+    expect(screen.getByText('#8')).toBeInTheDocument()
     expect(screen.queryByText('Gjeldende besøk')).not.toBeInTheDocument()
     expect(screen.queryByText('Ingen planlagte besøk')).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: /Reserver ny/ })).toHaveClass('button-fill')

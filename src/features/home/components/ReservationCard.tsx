@@ -13,7 +13,7 @@ interface ReservationCardProps {
   endDate: string
   guests: ReservationGuest[]
   statusText: string
-  /** Number of the reservation when all are sorted by start date, from 1. */
+  /** Number of the reservation among those that started in the same year, from 1. */
   order: number
 }
 

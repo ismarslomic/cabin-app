@@ -68,7 +68,7 @@ export default function HomePage() {
               endDate={state.live.currentReservation.endDate}
               guests={state.live.currentReservation.guests}
               statusText={currentStatusText(state.live.currentReservation.remainingNights)}
-              order={state.live.currentReservation.reservationOrder}
+              order={state.live.currentReservation.reservationOrderInYear}
             />
           )}
           {state.live.nextReservation && (
@@ -79,7 +79,7 @@ export default function HomePage() {
               endDate={state.live.nextReservation.endDate}
               guests={state.live.nextReservation.guests}
               statusText={nextStatusText(state.live.nextReservation.daysUntil)}
-              order={state.live.nextReservation.reservationOrder}
+              order={state.live.nextReservation.reservationOrderInYear}
             />
           )}
           {!state.live.currentReservation && !state.live.nextReservation && <EmptyReservations />}
