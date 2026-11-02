@@ -92,7 +92,14 @@ describe('HomePage', () => {
     for (const title of ['Gjeldende besøk', 'Neste besøk', 'Dette året']) {
       expect(screen.getByText(title)).toBeInTheDocument()
     }
-    expect(container.querySelectorAll('.skeleton-text').length).toBeGreaterThan(0)
+    const texts = Array.from(container.querySelectorAll('.skeleton-text'))
+    expect(texts.length).toBeGreaterThan(0)
+    // The skeleton font has ASCII glyphs only; other characters would render as real letters.
+    for (const text of texts) expect(text.textContent).toMatch(/^[\x20-\x7e]+$/)
+    expect(container.querySelectorAll('.home-skeleton-avatar')).toHaveLength(8)
+    // A neutral placeholder for the reserve button; the real one has an accent that depends on the data.
+    expect(container.querySelector('.home-skeleton-button')).not.toBeNull()
+    expect(screen.queryByRole('link', { name: /Reserver ny/ })).not.toBeInTheDocument()
     expect(screen.queryByText('Ingen planlagte besøk')).not.toBeInTheDocument()
   })
 

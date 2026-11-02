@@ -1,5 +1,7 @@
 /* Shapes of the skeleton parts; the text lines use Framework7's skeleton-text. */
 .home-skeleton-avatar {
+  /* Sized like the real avatars; they sit in the .avatar-stack row (see AvatarStack.css). */
+  flex: none;
   width: 32px;
   height: 32px;
   border-radius: 50%;
@@ -19,4 +21,10 @@
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
+}
+
+/* Same size as the large round reserve button it stands in for. */
+.home-skeleton-button {
+  height: var(--f7-button-large-height, 48px);
+  border-radius: var(--f7-button-large-height, 48px);
 }

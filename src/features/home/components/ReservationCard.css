@@ -38,6 +38,11 @@
   margin-bottom: 16px;
 }
 
+/* Stacked cards: the next card's own top margin would add to the 16px above it. */
+.reservation-card + .reservation-card {
+  margin-top: 0;
+}
+
 .reservation-status {
   display: inline-block;
   margin-top: 4px;
