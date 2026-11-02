@@ -5,15 +5,19 @@ import { describe, expect, it, vi } from 'vitest'
 import App from '@/app/App.tsx'
 
 describe('HomePage', () => {
-  it('has a large title and the section structure', async () => {
+  it('has the logo as large title, a text title for the collapsed bar, and the section structure', async () => {
     render(
       <StrictMode>
         <App />
       </StrictMode>,
     )
 
-    // The large Framework7 title is rendered twice (collapsed and large).
-    expect((await screen.findAllByText('Slomic smarthytte')).length).toBeGreaterThan(0)
+    // The large title is the logo; the text title is for the collapsed navbar.
+    expect(await screen.findByRole('img', { name: 'Slomic Smarthytte' })).toHaveAttribute(
+      'src',
+      '/logo/slomic-full-dark.svg',
+    )
+    expect(screen.getByText('Slomic smarthytte')).toBeInTheDocument()
     for (const section of ['Gjeldende besøk', 'Neste besøk', 'Dette året']) {
       expect(screen.getByText(section)).toBeInTheDocument()
     }

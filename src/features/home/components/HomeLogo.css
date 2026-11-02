@@ -1,0 +1,18 @@
+/* The logo replaces the text of the large navbar title, so the navbar gets the logo's height. The
+   negative margin lifts it into the top row, level with the profile avatar. */
+.page[data-name='home'] .navbar-large {
+  --f7-navbar-large-title-height: 150px;
+}
+
+/* Framework7 clips the large title text (for its ellipsis); let the lifted logo show above its box. */
+.page[data-name='home'] .navbar-large .title-large-text {
+  overflow: visible;
+}
+
+.home-logo {
+  display: block;
+  height: 170px;
+  width: auto;
+  margin-top: -40px;
+  filter: drop-shadow(0 1px 8px rgba(0, 0, 0, 0.5));
+}
