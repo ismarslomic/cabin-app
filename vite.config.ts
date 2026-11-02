@@ -26,6 +26,7 @@ export default defineConfig({
         'favicon.svg',
         'favicon.ico',
         'apple-touch-icon-180x180.png',
+        'logo/slomic-full-dark.svg',
         'images/hero-sunset.webp',
         'images/hero-waterfall.webp',
         'images/hero-forest.webp',

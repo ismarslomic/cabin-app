@@ -1,6 +1,7 @@
-import { Navbar } from 'framework7-react'
+import { Navbar, NavTitle } from 'framework7-react'
 import { useState } from 'react'
 import HomeHero from '@/features/home/components/HomeHero.tsx'
+import HomeLogo from '@/features/home/components/HomeLogo.tsx'
 import { pickHero } from '@/features/home/components/heroes.ts'
 import { ProfileNavRight } from '@/features/profile/index.ts'
 import AppPage from '@/shared/ui/AppPage.tsx'
@@ -17,7 +18,12 @@ export default function HomePage() {
         setHero((current) => pickHero(Math.random, current))
       }}
     >
-      <Navbar title="Slomic smarthytte" large transparent>
+      <Navbar large transparent>
+        {/* The small title shows when the page is scrolled; the large one is the logo. */}
+        <NavTitle>Slomic smarthytte</NavTitle>
+        <div slot="title-large">
+          <HomeLogo />
+        </div>
         <ProfileNavRight />
       </Navbar>
       <HomeHero hero={hero} />
