@@ -1,0 +1,4 @@
+/* The cards above already leave 16px; Block's own top margin would double it. */
+.home-reserve {
+  margin-top: 0;
+}

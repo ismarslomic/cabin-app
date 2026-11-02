@@ -1,0 +1,23 @@
+.year-stats {
+  padding: 0;
+}
+
+.year-stat.card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  padding: 12px 4px;
+  color: var(--f7-theme-color);
+}
+
+.year-stat-value {
+  color: var(--f7-text-color);
+  font-size: 22px;
+}
+
+.year-stat-label {
+  color: var(--cabin-muted);
+  font-size: 13px;
+}

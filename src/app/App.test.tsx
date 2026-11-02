@@ -21,7 +21,7 @@ describe('App', () => {
       </StrictMode>,
     )
 
-    expect(await screen.findByText('Gjeldende besøk')).toBeInTheDocument()
+    expect(await screen.findByText('Slomic smarthytte')).toBeInTheDocument()
   })
 
   it('has a bottom tab bar with the four main views', async () => {

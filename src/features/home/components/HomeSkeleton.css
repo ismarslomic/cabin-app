@@ -1,0 +1,22 @@
+/* Shapes of the skeleton parts; the text lines use Framework7's skeleton-text. */
+.home-skeleton-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+}
+
+.home-skeleton-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+}
+
+/* Announced to screen readers only. */
+.home-skeleton-status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

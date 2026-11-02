@@ -1,0 +1,11 @@
+/* The year statistics sit at the bottom of the page when there is spare height, so they stay in
+   place whether or not a reservation is shown. With more content they just follow it. */
+.page[data-name='home'] .page-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.page[data-name='home'] .home-year {
+  margin-top: auto;
+  padding-top: 8px;
+}
