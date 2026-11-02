@@ -23,6 +23,11 @@
   --cabin-success: #17794a;
   --cabin-warning: #a35400;
   --cabin-muted: #566678;
+
+  /* Reservation states, shared by Home and Calendar: past, current (at the cabin now), next. */
+  --cabin-past: #566678;
+  --cabin-current: #17794a;
+  --cabin-upcoming: #0a66c9;
 }
 
 .ios.dark {
@@ -46,4 +51,8 @@
   --cabin-success: #5ed998;
   --cabin-warning: #ffb340;
   --cabin-muted: #98a8ba;
+
+  --cabin-past: #98a8ba;
+  --cabin-current: #5ed998;
+  --cabin-upcoming: #5ea9ff;
 }
