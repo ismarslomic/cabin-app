@@ -1,0 +1,14 @@
+/* Takes the height left on the Home page (a flex column, see HomePage.css); content centered. */
+.empty-reservations {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.empty-reservations .button {
+  align-self: stretch;
+  margin-top: 16px;
+}

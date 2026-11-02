@@ -1,0 +1,51 @@
+/* Status colors come from the shared reservation-state tokens in theme.css. */
+.reservation-card-current {
+  --reservation-color: var(--cabin-current);
+}
+
+.reservation-card-next {
+  --reservation-color: var(--cabin-upcoming);
+}
+
+/* Card title: the state's dot and name in the state color. */
+.reservation-heading {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  color: var(--reservation-color);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.reservation-order {
+  margin-left: 6px;
+  color: var(--cabin-muted);
+}
+
+.reservation-dot {
+  display: block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--reservation-color);
+}
+
+/* Cards are 16px apart and 16px above the reserve button (margins do not collapse in the page's flex column). */
+.reservation-card {
+  margin-bottom: 16px;
+}
+
+/* Stacked cards: the next card's own top margin would add to the 16px above it. */
+.reservation-card + .reservation-card {
+  margin-top: 0;
+}
+
+.reservation-status {
+  display: inline-block;
+  margin-top: 4px;
+  color: var(--reservation-color);
+  font-weight: 600;
+}

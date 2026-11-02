@@ -1,0 +1,7 @@
+/* The iOS navbar puts the right side in a glass capsule that is 44px high. A link as wide as it is high
+   makes the capsule a circle (a ring around the photo) instead of an ellipse. */
+.navbar a.link.profile-nav-link {
+  width: 44px;
+  padding: 0;
+  justify-content: center;
+}

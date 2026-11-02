@@ -11,7 +11,7 @@ describe('AppPage', () => {
       </StrictMode>,
     )
 
-    await screen.findByText('Gjeldende besøk')
+    await screen.findByText('Slomic smarthytte')
 
     // Hjem, Kalender, Statistikk and Kjøring.
     expect(container.querySelectorAll('.page-content.ptr-content')).toHaveLength(4)

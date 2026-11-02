@@ -1,0 +1,24 @@
+.avatar-stack {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  /* The row's text must not squeeze the photos. */
+  flex: none;
+}
+
+.avatar-stack > * {
+  flex: none;
+}
+
+.avatar-stack-more {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--cabin-elevated);
+  color: var(--cabin-muted);
+  font-size: 12px;
+  font-weight: 600;
+}

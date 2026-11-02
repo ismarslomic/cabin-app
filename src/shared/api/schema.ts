@@ -341,6 +341,10 @@ export interface components {
             guests: components["schemas"]["GuestStats"][];
             /** @description Number of nights remaining in the current reservation, from today until check-out. 0 on the check-out day. */
             remainingNights: number;
+            /** @description Order number of the current reservation when all reservations are sorted ascending on start date, starting at 1. */
+            reservationOrder: number;
+            /** @description Order number of the current reservation among the reservations that have started in the same year as its start date, sorted ascending on start date, starting at 1. */
+            reservationOrderInYear: number;
         } | null;
         /**
          * NextReservationInfo
@@ -361,6 +365,10 @@ export interface components {
             guests: components["schemas"]["GuestStats"][];
             /** @description Number of days from today until the next reservation starts. */
             daysUntil: number;
+            /** @description Order number of the next reservation when all reservations are sorted ascending on start date, starting at 1. */
+            reservationOrder: number;
+            /** @description Order number of the next reservation among the reservations that have started in the same year as its start date, sorted ascending on start date, starting at 1. */
+            reservationOrderInYear: number;
         } | null;
         /** FactSegment */
         FactSegment: {
