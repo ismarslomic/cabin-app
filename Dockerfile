@@ -1,6 +1,6 @@
 # Base images are pinned by exact version and digest so every build is identical; Dependabot proposes
 # updates. The Node version must equal .nvmrc exactly (CI checks this), so CI tests what ships.
-FROM node:26.13.0-alpine@sha256:c6ad9e9c1d80f6eb607c26b4b0a132ff7a2344fad1c78ea3baa2a7d4c8de6d94 AS build
+FROM node:26.13.0-alpine@sha256:8996bb5821d62a8fd9bb27c1cb07462f3fdce6e47d640c6a881ead0b064ce216 AS build
 WORKDIR /app
 COPY package.json pnpm-lock.yaml ./
 # The Node image has no corepack: install the pnpm version pinned in "packageManager".
