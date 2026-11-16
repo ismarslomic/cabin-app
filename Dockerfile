@@ -13,8 +13,10 @@ RUN pnpm build
 FROM nginxinc/nginx-unprivileged:1.31.7-alpine@sha256:b5047b9b76845eac124358373c6852377c52e4b05834a47647e955dd91cb8f1e
 # The pinned base image is a snapshot. Install the Alpine security fixes released since, and remove curl,
 # which nothing here uses (the health check uses wget). Then go back to the image's non-root user.
+# Changing ALPINE_FIXES (CI passes the run id) busts the layer cache, so the upgrade runs on every build.
+ARG ALPINE_FIXES=local
 USER root
-RUN apk del --no-cache curl libcurl && apk upgrade --no-cache
+RUN echo "Alpine fixes build: ${ALPINE_FIXES}" && apk del --no-cache curl libcurl && apk upgrade --no-cache
 USER 101
 COPY nginx/default.conf /etc/nginx/conf.d/default.conf
 COPY nginx/security-headers.conf /etc/nginx/snippets/security-headers.conf

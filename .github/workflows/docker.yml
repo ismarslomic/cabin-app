@@ -43,6 +43,7 @@ jobs:
           platforms: linux/arm64
           load: true
           tags: cabin-app:scan
+          build-args: ALPINE_FIXES=${{ github.run_id }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -73,5 +74,6 @@ jobs:
           platforms: linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
+          build-args: ALPINE_FIXES=${{ github.run_id }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
