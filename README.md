@@ -93,6 +93,43 @@ pnpm dev
 - Framework7's own `<Icon>` (Framework7 Icons or Material Icons fonts) is not used. Lucide is the icon set.
 - Browse icons at https://lucide.dev/icons.
 
+## User feedback and errors
+
+Based on Apple's Human Interface Guidelines (Framework7 has no feedback guidance of its own, only component APIs). The API reports errors as `ApiError { code, message }`; the app maps `code` to Norwegian texts and never shows `message`.
+
+### Principles
+
+1. **Show the message where the problem is**, on the smallest surface that fits.
+2. **Interrupt only when the user must act.** Modal alerts are for blocking situations and destructive confirmations; everything else is non-modal.
+3. **Say what happened and what to do next.** Plain Norwegian, no jargon, no blame, no exclamation marks. End with an action (retry, reload) when there is one.
+4. **Keep the user's input.** An error never clears a form; retry must not need retyping.
+5. **Recover in place.** Offer "Prøv igjen" next to the error instead of navigating away.
+6. **Success is quiet.** The visible state change is the confirmation; no success toast.
+7. **Do not rely on color alone**, and announce errors that appear without a focus move (`role="alert"`).
+8. **One failure, one message.**
+9. **Avoid the error by design.** Do not show features the user is not allowed to use.
+
+### Which component, where
+
+| Situation                                          | Use                                                                                                | Placement                               |
+| -------------------------------------------------- | -------------------------------------------------------------------------------------------------- | --------------------------------------- |
+| Invalid field                                      | `ListInput` `errorMessage` + `errorMessageForce`                                                   | Under the field                         |
+| A page or section fails to load                    | `ErrorState` (message + "Prøv igjen")                                                              | Replaces the content                    |
+| Save or action fails                               | Inline `Block` with the message                                                                    | Below the form, above the submit button |
+| Transient or background failure (network, refresh) | `f7.toast`, `position: 'top'`, `closeTimeout` ~5 s, `closeButton`                                  | Top                                     |
+| Destructive confirmation                           | `f7.dialog.confirm` or Action Sheet                                                                | Modal                                   |
+| `403` no access                                    | `f7.dialog.alert`, single button                                                                   | Modal                                   |
+| `412` version conflict                             | Reload the latest data, then inline `Block` ("Endret av noen andre, vi har hentet nyeste versjon") | Where the user edited                   |
+| `401` session expired                              | Reload the page so Cloudflare Access shows the login; no message                                   | n/a                                     |
+| Waiting                                            | `Preloader` inline, `Skeleton*` for content                                                        | In place                                |
+
+Not used: `f7.notification` (push-style tone) and Popover (not for phones).
+
+### Where the code lives
+
+- Texts for `ApiError.code` sit in the feature that owns the call (`features/<name>/api/`). Generic ones (network, `401`, `403`, `5xx`) sit in `shared/`.
+- Reusable pieces (`ErrorState`, a toast helper with the defaults above) sit in `shared/`.
+
 ## Testing
 
 - Test files sit next to the code: `Foo.tsx` and `Foo.test.tsx`.

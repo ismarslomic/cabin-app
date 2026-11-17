@@ -73,6 +73,11 @@ Group by feature, not by technical layer. Full rules in `README.md` ("Folder str
 - Use `lucide-react` only; import each icon by name (`import { House } from 'lucide-react'`). Never `import *` or look icons up by string, which breaks tree-shaking.
 - No hard-coded colors (icons use `currentColor`). Icon-only controls need an `aria-label` on the control.
 
+## Error feedback
+
+- Before adding or changing any error, loading or confirmation UI, read "User feedback and errors" in `README.md` and follow it: inline errors where the problem is, toasts at `top` only for transient failures, modal alerts only for blocking cases, never show `ApiError.message`.
+- Error texts per `ApiError.code` live in the feature (`features/<name>/api/`); generic ones in `shared/`.
+
 ## Adding a feature
 
 1. Create `src/features/<name>/` with `pages/`, `components/`, `hooks/`, `api/` only as needed.
