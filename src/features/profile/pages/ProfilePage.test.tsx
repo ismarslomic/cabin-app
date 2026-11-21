@@ -17,15 +17,19 @@ const profile: Profile = {
   gender: 'FEMALE',
   isFamily: true,
   role: 'FAMILY_USER',
+  version: 3,
+  avatarUrl: null,
 }
 
 /** Answers the API calls of the app; `posts` collects the update bodies. */
-function stubApi(options: { me?: () => Response; posts?: unknown[]; update?: Response } = {}) {
+function stubApi(
+  options: { me?: () => Response; posts?: unknown[]; update?: () => Response } = {},
+) {
   const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
     const url = typeof input === 'string' ? input : ''
-    if (url === '/api/me' && init?.method === 'POST') {
+    if (url === '/api/me' && init?.method === 'PUT') {
       options.posts?.push(JSON.parse(init.body as string))
-      return Promise.resolve(options.update ?? Response.json(profile))
+      return Promise.resolve(options.update?.() ?? Response.json(profile))
     }
     if (url === '/api/me') return Promise.resolve(options.me?.() ?? Response.json(profile))
     return Promise.resolve(new Response(null, { status: 404 }))
@@ -114,7 +118,13 @@ describe('profile', () => {
 
     await vi.waitFor(() => {
       expect(posts).toEqual([
-        { firstName: 'Kristin', lastName: 'Nordmann', birthYear: 1985, gender: 'MALE' },
+        {
+          firstName: 'Kristin',
+          lastName: 'Nordmann',
+          birthYear: 1985,
+          gender: 'MALE',
+          version: 3,
+        },
       ])
     })
   })
@@ -147,14 +157,44 @@ describe('profile', () => {
     expect(screen.getByRole('link', { name: 'Lagre' })).toHaveClass('disabled')
   })
 
-  it('shows the server error when saving fails', async () => {
-    stubApi({ update: new Response(null, { status: 403 }) })
+  it('opens a dialog when saving is forbidden', async () => {
+    stubApi({ update: () => new Response(null, { status: 403 }) })
     const user = await openProfile()
 
     await openEditPage(user)
     await user.type(screen.getByDisplayValue('Kari'), 'x')
     await user.click(screen.getByRole('link', { name: 'Lagre' }))
 
-    expect(await screen.findByText('Du har ikke tilgang til appen.')).toBeInTheDocument()
+    expect(await screen.findAllByText('Du har ikke tilgang til appen.')).not.toHaveLength(0)
+  })
+
+  it('resets the form to the latest profile when it changed elsewhere', async () => {
+    let latest = profile
+    stubApi({
+      me: () => Response.json(latest),
+      update: () => {
+        latest = { ...profile, firstName: 'Kristin', version: 4 }
+        return Response.json({ code: 'VERSION_MISMATCH', message: 'x' }, { status: 412 })
+      },
+    })
+    const user = await openProfile()
+
+    await openEditPage(user)
+    await user.type(screen.getByDisplayValue('Kari'), 'x')
+    await user.click(screen.getByRole('link', { name: 'Lagre' }))
+
+    expect(await screen.findByText(/Profilen ble endret et annet sted/)).toBeInTheDocument()
+    expect(screen.getByDisplayValue('Kristin')).toBeInTheDocument()
+  })
+
+  it('shows an inline message when saving fails', async () => {
+    stubApi({ update: () => new Response(null, { status: 500 }) })
+    const user = await openProfile()
+
+    await openEditPage(user)
+    await user.type(screen.getByDisplayValue('Kari'), 'x')
+    await user.click(screen.getByRole('link', { name: 'Lagre' }))
+
+    expect(await screen.findByText('Kunne ikke lagre profilen.')).toBeInTheDocument()
   })
 })

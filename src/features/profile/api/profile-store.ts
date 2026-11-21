@@ -54,6 +54,11 @@ export function useProfile(): ProfileState {
   return current
 }
 
+/** Puts a profile the app already has (the answer of a save) into the store, without a request. */
+export function setProfile(profile: Profile) {
+  setState({ status: 'ready', profile })
+}
+
 /** Retry after an error: back to loading, then fetch again. */
 export function reloadProfile(): Promise<void> {
   setState({ status: 'loading', profile: state.profile })

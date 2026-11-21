@@ -10,7 +10,13 @@ import type {
   ReservationGuest,
 } from '@/features/home/api/stats-api.ts'
 
-const guest = (id: string, firstName: string) => ({ guestId: id, firstName }) as ReservationGuest
+const guest = (id: string, firstName: string) =>
+  ({
+    guestId: id,
+    firstName,
+    stayStartDate: '2026-11-01',
+    stayEndDate: '2026-11-03',
+  }) as ReservationGuest
 
 const year: CurrentYearStats = { year: 2026, visits: 8, totalNights: 32, totalDistanceKm: 1240 }
 

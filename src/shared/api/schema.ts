@@ -16,12 +16,12 @@ export interface paths {
          * @description Returns the user that Cloudflare Access authenticated (the Cf-Access-Jwt-Assertion header, verified against Cloudflare's signing keys) together with the profile and the application role stored for that person.
          */
         get: operations["getMe"];
-        put?: never;
         /**
          * Update the authenticated user
-         * @description Changes the profile of the authenticated user's own guest. Every role may change firstName, lastName, birthYear and gender, and all of them are required. Properties that are not part of the request, such as email, isFamily and role, cannot be changed here and are ignored. Changed properties are not overwritten by the guests.json sync at startup.
+         * @description A full replace of the profile of the authenticated user's own guest. Every role sends firstName, lastName, birthYear and gender, all required, together with the version the client read (from GET /api/me). Other properties, such as email, isFamily and role, cannot be changed here and are ignored. Errors are JSON with a code and a message.
          */
-        post: operations["updateMe"];
+        put: operations["updateMe"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -40,8 +40,56 @@ export interface paths {
          * @description Returns the guest's avatar as a JPEG image. The response has an ETag and Cache-Control header, and a conditional request with If-None-Match returns 304. Use the avatarUrl from the live stats response, which changes when the image does.
          */
         get: operations["getGuestAvatar"];
-        put?: never;
+        /**
+         * Upload the avatar of a guest
+         * @description Admin only. Creates or replaces the avatar of any guest. The body is the raw JPEG (Content-Type image/jpeg, at most 4 MB, at most 4000 x 4000 pixels). The server removes all metadata (Exif including GPS and orientation, XMP, comments, thumbnails) without re-encoding, so the client must upload upright pixels: draw the image to a canvas, which applies the orientation. Last write wins: no version is sent, and the same image changes nothing. A changed image gives the guest a new avatarUrl (the v parameter). The guest's own version is not changed. Errors are JSON with a code and a message.
+         */
+        put: operations["uploadGuestAvatar"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/me/avatar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Upload the avatar of the authenticated user
+         * @description Every role. Creates or replaces the avatar of the authenticated user's own guest. The body is the raw JPEG (Content-Type image/jpeg, at most 4 MB, at most 4000 x 4000 pixels). The server removes all metadata (Exif including GPS and orientation, XMP, comments, thumbnails) without re-encoding, so the client must upload upright pixels: draw the image to a canvas, which applies the orientation. Last write wins: no version is sent, and the same image changes nothing. A changed image gives the guest a new avatarUrl (the v parameter). The guest's own version is not changed. Errors are JSON with a code and a message.
+         */
+        put: operations["uploadMyAvatar"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/guests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List guests
+         * @description Admin and family user. All guests with every property, including email, role, version and the audit fields. avatarUrl is null for a guest without an avatar. createdBy and updatedBy are a guest id or the literal system, which is not a guest.
+         */
+        get: operations["listGuests"];
+        put?: never;
+        /**
+         * Create a guest
+         * @description Admin only. Required: firstName, lastName (1-20 characters), birthYear and gender. Optional: email, role (no role means no access) and isFamily (default false). The id is generated from the name, such as ola.nordmann or ola.nordmann-2. A guest with a role but no email cannot log in, and a guest that has to log in also needs an entry in the Cloudflare Access policy. Errors are JSON with a code and a message.
+         */
+        post: operations["createGuest"];
         delete?: never;
         options?: never;
         head?: never;
@@ -56,13 +104,65 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        put?: never;
         /**
          * Update a guest
-         * @description Admin only. Changes the properties that are set in the body (firstName, lastName, birthYear, gender, email, isFamily, role) and leaves the others unchanged. Changed properties are not overwritten by the guests.json sync at startup. An admin cannot remove their own admin role.
+         * @description Admin only. A full replace: the body must carry the version the client read and every writable property (firstName, lastName, birthYear, gender, email, isFamily, role). A null email or role clears it, and a guest without a role has no access. Other properties in the body are ignored. An admin cannot remove their own admin role or change their own email, and the last admin with an email cannot lose the role or the email. The email is trimmed and stored in lowercase, and a blank email clears it. Errors are JSON with a code and a message.
          */
-        post: operations["updateGuest"];
+        put: operations["updateGuest"];
+        post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/reservations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List reservations
+         * @description All roles and the service user. Returns every reservation that overlaps the window, i.e. its start date is before to and its end date is on or after from (UTC dates), so a reservation that spans a month boundary appears in both months. Without parameters it returns all reservations. Admin, family user and the service user see every reservation; a guest user only sees the reservations their own guest is part of, whole stay or part of it. Sorted by startTime, then id. Errors are JSON with a code and a message.
+         */
+        get: operations["listReservations"];
+        put?: never;
+        /**
+         * Create a reservation
+         * @description Admin and family user. Errors are JSON with a code and a message. The id is generated by the server (32 hex characters). The stay is at least one instant long, at most 60 nights (UTC dates) and starts at most 2 years ahead, in the past is allowed. It must not overlap another reservation. Needs 1-50 existing guests, each once. A calendar notification is queued; it never makes the request fail. A retried request after a lost response answers 409.
+         */
+        post: operations["createReservation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/reservations/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a reservation
+         * @description All roles and the service user. A guest user only gets a reservation their own guest is part of, for any other reservation the answer is the same as for an unknown id. Errors are JSON with a code and a message.
+         */
+        get: operations["getReservation"];
+        /**
+         * Update a reservation
+         * @description Admin and family user. Errors are JSON with a code and a message. A full replace: the body must carry the version the client read, startTime, endTime and the guests. The checks run in this order: the reservation exists (404), the version (412), the rules of the request (400), overlap (409). The range rules (at most 60 nights, start at most 2 years ahead) apply when the times change. Changing the times clears check-in, check-out and the linked trips in the same transaction and queues a calendar update. They are derived again right after the commit, in the same request; if that fails it is only logged and the next startup or background run recomputes them. A change of guests only, or no change, queues nothing, and no change keeps the version.
+         */
+        put: operations["updateReservation"];
+        post?: never;
+        /**
+         * Delete a reservation
+         * @description Admin and family user. Errors are JSON with a code and a message. Also deletes the guest links, trip links and check-in/out, and queues the removal of the calendar event. Past reservations can be deleted, so statistics change retroactively.
+         */
+        delete: operations["deleteReservation"];
         options?: never;
         head?: never;
         patch?: never;
@@ -77,7 +177,7 @@ export interface paths {
         };
         /**
          * Live occupancy status
-         * @description Returns whether the cabin is currently occupied, details about the ongoing and next reservation (dates, guest statistics, remaining/upcoming nights), and all-time totals (visits, nights, unique guests) excluding future bookings. Suitable for a smart mirror or real-time dashboard.
+         * @description Returns whether the cabin is currently occupied, details about the ongoing and next reservation (dates, guest statistics, remaining/upcoming nights), and all-time totals (visits, nights, unique guests) excluding future bookings. The current and next reservation list every linked guest, whatever their own stay, each with `stayStartDate` and `stayEndDate` (a guest who has not arrived or has left is listed too: compare with today); the numbers per guest count with the guest's own stay and the reservation-level numbers (dates, nights, totals) with the reservation. Suitable for a smart mirror or real-time dashboard.
          */
         get: operations["getLiveStats"];
         put?: never;
@@ -103,7 +203,7 @@ export interface paths {
          *     * **visits**: all visits of the guest, historical, ongoing and upcoming, oldest first, each with a status (COMPLETED, ONGOING or UPCOMING), days and nights. Suitable for a timeline.
          *     * **funFacts**: ready-to-display Norwegian fun facts about the guest, sorted by priority (highest first). The list is not capped, so pick the facts to display. A fact is only included when it is true for the guest, so the list can be short or empty for guests with few visits.
          *
-         *     Driving statistics are not included. Upcoming visits are not counted in totals or facts.
+         *     All numbers about the guest count with the guest's own stay (own dates, or the reservation period when the guest has none): a visit is ongoing between the guest's own arrival and departure, also when the reservation started earlier. Driving statistics are not included. Upcoming visits are not counted in totals or facts.
          */
         get: operations["getGuestProfileStats"];
         put?: never;
@@ -165,7 +265,9 @@ export interface paths {
          * Full year statistics
          * @description Returns full statistics for a given year, including visit counts, nights, occupancy percentages (days/weeks/months), guest overview, EV statistics (distance, energy consumption, regeneration), driving time stats (avg/min/max to and from cabin), typical departure and arrival times, and a monthly breakdown for all 12 months.
          *
-         *     A guest is counted as **new** in a given year if that year is the first year in which they appear in any reservation.
+         *     A guest is counted as **new** in a given year if that year is the first year in which they arrive, with the guest's own arrival date.
+         *
+         *     **Basis:** the guest lists count with the guest's own stay (own dates, or the reservation period when the guest has none). Visit counts, nights, occupancy, group size and driving use the reservation.
          */
         get: operations["getYearStats"];
         put?: never;
@@ -205,10 +307,70 @@ export interface paths {
         };
         /**
          * Statistics for all guests
-         * @description Returns statistics for all guests across all years: top 10 guests by number of visits and by total nights, gender distribution, and age group breakdown (0–12, 13–17, 18–30, 31–50, 51+). Suitable for a hall-of-fame view or demographic overview.
+         * @description Returns statistics for all guests across all years: top 10 guests by number of visits and by total nights, gender distribution, and age group breakdown (0–12, 13–17, 18–30, 31–50, 51+). Visits and days count with the guest's own stay (own dates, or the reservation period when the guest has none). Suitable for a hall-of-fame view or demographic overview.
          */
         get: operations["getAllGuestsStats"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/issues": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List issues
+         * @description Admin only. The operational problems that the application reported, with the latest occurrence first (lastOccurredTime, then id, both descending). A problem is one issue that counts its occurrences, and a resolved problem that comes back becomes OPEN and unread again. Resolved issues are deleted 30 days after they were resolved or read, whichever is later. The service user gets 403. Errors are JSON with a code and a message.
+         */
+        get: operations["listIssues"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/issues/unread-count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Count unread issues
+         * @description Admin only. The number of issues that are not resolved and not read, for a badge in the application. A resolved issue is not counted, even when it is unread. The service user gets 403.
+         */
+        get: operations["countUnreadIssues"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/issues/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Mark an issue as read or unread
+         * @description Admin only. A full replace: the body must carry the version the client read and read. Marking an issue the way it already is changes nothing and keeps the version. Any issue can be marked, also a resolved one. Errors are JSON with a code and a message.
+         */
+        put: operations["updateIssue"];
         post?: never;
         delete?: never;
         options?: never;
@@ -220,107 +382,573 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        /** UserPrincipal */
-        UserPrincipal: {
+        /** MeResponse */
+        MeResponse: {
+            /**
+             * @description Internal unique identifier of the guest, generated from the name, such as ola.nordmann.
+             * @example ola.nordmann
+             */
             id: string;
+            /**
+             * @description The first and last name together.
+             * @example Ola Nordmann
+             */
             name: string;
+            /**
+             * @description The first name.
+             * @example Ola
+             */
             firstName: string;
+            /**
+             * @description The last name.
+             * @example Nordmann
+             */
             lastName: string;
+            /**
+             * @description The year of birth.
+             * @example 1985
+             */
             birthYear: number;
-            /** @enum {string} */
+            /**
+             * @description The gender: MALE or FEMALE.
+             * @example MALE
+             * @enum {string}
+             */
             gender: "MALE" | "FEMALE";
+            /**
+             * @description The email address the user logs in with. Only an admin can change it.
+             * @example ola.nordmann@example.com
+             */
             email: string;
+            /**
+             * @description True if the guest belongs to the family. Only an admin can change it.
+             * @example true
+             */
             isFamily: boolean;
-            /** @enum {string} */
+            /**
+             * @description The role in the application: ADMIN, FAMILY_USER or GUEST_USER. Only an admin can change it.
+             * @example ADMIN
+             * @enum {string}
+             */
             role: "ADMIN" | "FAMILY_USER" | "GUEST_USER";
+            /**
+             * @description Relative URL of the avatar image, or null if the guest has no avatar. The v parameter changes when the image does, so the URL can be cached safely. Fetch /api/me again after uploading an avatar.
+             * @example /api/guests/ola.nordmann/avatar?v=1767225600000
+             */
+            avatarUrl?: string | null;
+            /**
+             * @description The version of the guest. Send it back unchanged in PUT /api/me, an outdated version gives 412. It is not the version of the avatar.
+             * @example 3
+             */
+            version: number;
         };
         /** MeUpdate */
         MeUpdate: {
+            /**
+             * @description The version of the guest that the client read, from GET /api/me. An outdated version gives 412.
+             * @example 3
+             */
+            version: number;
+            /**
+             * @description The first name, 1-20 characters. Leading and trailing spaces are removed.
+             * @example Ola
+             */
             firstName: string;
+            /**
+             * @description The last name, 1-20 characters. Leading and trailing spaces are removed.
+             * @example Nordmann
+             */
             lastName: string;
+            /**
+             * @description The year of birth.
+             * @example 1985
+             */
             birthYear: number;
-            /** @enum {string} */
+            /**
+             * @description The gender: MALE or FEMALE.
+             * @example MALE
+             * @enum {string}
+             */
             gender: "MALE" | "FEMALE";
+        };
+        /** ApiError */
+        ApiError: {
+            /**
+             * @description Stable machine-readable reason, for example INVALID_REQUEST, INVALID_GUEST, INVALID_IMAGE, NOT_FOUND, FORBIDDEN, EMAIL_IN_USE, LAST_ADMIN, VERSION_MISMATCH, OVERLAP, END_BEFORE_START, TOO_LONG, TOO_FAR_AHEAD, NO_GUESTS, TOO_MANY_GUESTS, DUPLICATE_GUEST, UNKNOWN_GUEST, INVALID_STAY, BODY_TOO_LARGE, UNSUPPORTED_MEDIA_TYPE or TEMPORARILY_UNAVAILABLE. Clients map it to their own texts.
+             * @example VERSION_MISMATCH
+             */
+            code: string;
+            /**
+             * @description English description of the error for developers. Not meant to be shown to users.
+             * @example The guest has changed since the version in the body
+             */
+            message: string;
+        };
+        /** GuestResponse */
+        GuestResponse: {
+            /**
+             * @description Internal unique identifier of the guest, generated from the name, such as ola.nordmann.
+             * @example ola.nordmann
+             */
+            id: string;
+            /**
+             * @description The first name.
+             * @example Ola
+             */
+            firstName: string;
+            /**
+             * @description The last name.
+             * @example Nordmann
+             */
+            lastName: string;
+            /**
+             * @description The year of birth.
+             * @example 1985
+             */
+            birthYear: number;
+            /**
+             * @description The gender: MALE or FEMALE.
+             * @example MALE
+             * @enum {string}
+             */
+            gender: "MALE" | "FEMALE";
+            /**
+             * @description The email address the guest logs in with, or null if the guest has none.
+             * @example ola.nordmann@example.com
+             */
+            email?: string | null;
+            /**
+             * @description True if the guest belongs to the family.
+             * @example true
+             */
+            isFamily: boolean;
+            /**
+             * @description The role in the application: ADMIN, FAMILY_USER or GUEST_USER, or null for no access.
+             * @example ADMIN
+             * @enum {string|null}
+             */
+            role?: "ADMIN" | "FAMILY_USER" | "GUEST_USER" | null;
+            /**
+             * @description Relative URL of the avatar image, or null if the guest has no avatar. The v parameter changes when the image does, so the URL can be cached safely.
+             * @example /api/guests/ola.nordmann/avatar?v=1767225600000
+             */
+            avatarUrl?: string | null;
+            /**
+             * @description The version of the guest. Send it back unchanged in PUT /api/guests/{guestId}, an outdated version gives 412. It is not the version of the avatar.
+             * @example 3
+             */
+            version: number;
+            /**
+             * Format: date-time
+             * @description When the guest was created (UTC).
+             * @example 2026-06-01T09:15:00Z
+             */
+            createdTime: string;
+            /**
+             * @description Who created the guest: a guest id, or the literal system, which is not a guest.
+             * @example ola.nordmann
+             */
+            createdBy: string;
+            /**
+             * Format: date-time
+             * @description When the guest was last changed (UTC), or null if never changed.
+             * @example 2026-06-20T18:30:00Z
+             */
+            updatedTime?: string | null;
+            /**
+             * @description Who last changed the guest: a guest id, or the literal system, which is not a guest. Null if never changed.
+             * @example kari.nordmann
+             */
+            updatedBy?: string | null;
+        };
+        /** GuestCreate */
+        GuestCreate: {
+            /**
+             * @description The first name, 1-20 characters.
+             * @example Ola
+             */
+            firstName: string;
+            /**
+             * @description The last name, 1-20 characters.
+             * @example Nordmann
+             */
+            lastName: string;
+            /**
+             * @description The year of birth.
+             * @example 1985
+             */
+            birthYear: number;
+            /**
+             * @description The gender: MALE or FEMALE.
+             * @example MALE
+             * @enum {string}
+             */
+            gender: "MALE" | "FEMALE";
+            /**
+             * @description The email address the guest logs in with. Optional: a guest without an email cannot log in. Trimmed and stored in lowercase. One guest per email.
+             * @example ola.nordmann@example.com
+             */
+            email?: string | null;
+            /**
+             * @description True if the guest belongs to the family. Optional, default false.
+             * @example true
+             */
+            isFamily?: boolean;
+            /**
+             * @description The role in the application: ADMIN, FAMILY_USER or GUEST_USER. Optional: no role means no access.
+             * @example ADMIN
+             * @enum {string|null}
+             */
+            role?: "ADMIN" | "FAMILY_USER" | "GUEST_USER" | null;
         };
         /** GuestUpdate */
         GuestUpdate: {
-            firstName?: string | null;
-            lastName?: string | null;
-            birthYear?: number | null;
-            /** @enum {string|null} */
-            gender?: "MALE" | "FEMALE" | null;
-            email?: string | null;
-            isFamily?: boolean | null;
-            /** @enum {string|null} */
-            role?: "ADMIN" | "FAMILY_USER" | "GUEST_USER" | null;
-        };
-        /** Guest */
-        Guest: {
-            id: string;
+            /**
+             * @description The version of the guest that the client read, from GET /api/guests. An outdated version gives 412.
+             * @example 3
+             */
+            version: number;
+            /**
+             * @description The first name, 1-20 characters.
+             * @example Ola
+             */
             firstName: string;
+            /**
+             * @description The last name, 1-20 characters.
+             * @example Nordmann
+             */
             lastName: string;
+            /**
+             * @description The year of birth.
+             * @example 1985
+             */
             birthYear: number;
-            email?: string | null;
-            /** @enum {string} */
+            /**
+             * @description The gender: MALE or FEMALE.
+             * @example MALE
+             * @enum {string}
+             */
             gender: "MALE" | "FEMALE";
-            notionId?: string | null;
-            isFamily?: boolean;
-            /** @enum {string|null} */
-            role?: "ADMIN" | "FAMILY_USER" | "GUEST_USER" | null;
+            /**
+             * @description The email address the guest logs in with, or null to clear it. Trimmed and stored in lowercase, and a blank email clears it. One guest per email.
+             * @example ola.nordmann@example.com
+             */
+            email: string | null;
+            /**
+             * @description True if the guest belongs to the family.
+             * @example true
+             */
+            isFamily: boolean;
+            /**
+             * @description The role in the application: ADMIN, FAMILY_USER or GUEST_USER, or null for no access.
+             * @example ADMIN
+             * @enum {string|null}
+             */
+            role: "ADMIN" | "FAMILY_USER" | "GUEST_USER" | null;
+        };
+        /** ReservationGuestResponse */
+        ReservationGuestResponse: {
+            /**
+             * @description Internal unique identifier of the guest.
+             * @example ola.nordmann
+             */
+            guestId: string;
+            /**
+             * @description The first name of the guest.
+             * @example Ola
+             */
+            firstName: string;
+            /**
+             * @description The last name of the guest.
+             * @example Nordmann
+             */
+            lastName: string;
+            /**
+             * @description Relative URL of the avatar image, or null if the guest has no avatar. The v parameter changes when the image does, so the URL can be cached safely.
+             * @example /api/guests/ola.nordmann/avatar?v=1767225600000
+             */
+            avatarUrl?: string | null;
+            /**
+             * Format: date
+             * @description The guest's own first day (UTC date) when the guest arrived after the reservation started, otherwise null: the guest follows the start of the reservation. Compare with the UTC date of startTime.
+             * @example 2026-07-11
+             */
+            fromDate?: string | null;
+            /**
+             * Format: date
+             * @description The guest's own last day (UTC date) when the guest left before the reservation ended, otherwise null: the guest follows the end of the reservation. Compare with the UTC date of endTime.
+             * @example 2026-07-12
+             */
+            toDate?: string | null;
+        };
+        /**
+         * ReservationCheckInResponse
+         * @description The check-in, or null if the reservation has no check-in yet.
+         */
+        ReservationCheckInResponse: {
+            /**
+             * Format: date-time
+             * @description When the guests checked in (UTC).
+             * @example 2026-07-10T17:42:00Z
+             */
+            time: string;
+            /**
+             * @description What registered the check-in: CHECK_IN_SENSOR, VEHICLE_TRIP or CALENDAR_EVENT.
+             * @example CHECK_IN_SENSOR
+             * @enum {string}
+             */
+            sourceName: "CHECK_IN_SENSOR" | "VEHICLE_TRIP" | "CALENDAR_EVENT";
+        } | null;
+        /**
+         * ReservationCheckOutResponse
+         * @description The check-out, or null if the reservation has no check-out yet.
+         */
+        ReservationCheckOutResponse: {
+            /**
+             * Format: date-time
+             * @description When the guests checked out (UTC).
+             * @example 2026-07-12T12:10:00Z
+             */
+            time: string;
+            /**
+             * @description What registered the check-out: CHECK_IN_SENSOR, VEHICLE_TRIP or CALENDAR_EVENT.
+             * @example VEHICLE_TRIP
+             * @enum {string}
+             */
+            sourceName: "CHECK_IN_SENSOR" | "VEHICLE_TRIP" | "CALENDAR_EVENT";
+        } | null;
+        /** ReservationResponse */
+        ReservationResponse: {
+            /**
+             * @description Unique identifier of the reservation. It is also the id of the Google Calendar event, so an old reservation can have an id that starts with an underscore.
+             * @example a3f9c2e17b4d4e5f8a1b2c3d4e5f6a7b
+             */
+            id: string;
+            /**
+             * Format: date-time
+             * @description When the stay starts (UTC instant). Its UTC date is the first day of the stay.
+             * @example 2026-07-10T16:00:00Z
+             */
+            startTime: string;
+            /**
+             * Format: date-time
+             * @description When the stay ends (UTC instant). Its UTC date is the last day of the stay.
+             * @example 2026-07-12T13:00:00Z
+             */
+            endTime: string;
+            /** @description The guests of the reservation, sorted by guest id. Never empty for a stored reservation. */
+            guests: components["schemas"]["ReservationGuestResponse"][];
+            /**
+             * @description UPCOMING before the start date, ONGOING while the end date is after today, COMPLETED from the end date itself on (UTC dates). Differs from the live stats, which keep the check-out day as occupied.
+             * @example UPCOMING
+             * @enum {string}
+             */
+            status: "COMPLETED" | "ONGOING" | "UPCOMING";
+            checkIn?: components["schemas"]["ReservationCheckInResponse"];
+            checkOut?: components["schemas"]["ReservationCheckOutResponse"];
+            /**
+             * @description The version of the reservation. It changes only when a user edits the times or the guests, not when check-in/out or trips are derived.
+             * @example 3
+             */
+            version: number;
+            /**
+             * Format: date-time
+             * @description When the reservation was created (UTC).
+             * @example 2026-06-01T09:15:00Z
+             */
+            createdTime: string;
+            /**
+             * @description Who created the reservation: a guest id, or the literal system, which is not a guest.
+             * @example ola.nordmann
+             */
+            createdBy: string;
+            /**
+             * Format: date-time
+             * @description When a user last edited the reservation (UTC), or null if never edited.
+             * @example 2026-06-20T18:30:00Z
+             */
+            updatedTime?: string | null;
+            /**
+             * @description Who last edited the reservation: a guest id, or the literal system, which is not a guest. Null if never edited.
+             * @example kari.nordmann
+             */
+            updatedBy?: string | null;
+        };
+        /** ReservationGuestRef */
+        ReservationGuestRef: {
+            /**
+             * @description Internal unique identifier of an existing guest, from GET /api/guests.
+             * @example ola.nordmann
+             */
+            guestId: string;
+            /**
+             * Format: date
+             * @description The guest's first day when the guest arrives after the reservation starts: a UTC date, compared with the UTC date of startTime, so it is on or after that date and not after the last day. Omit or null when the guest arrives with the group. A date equal to the first day of the reservation is stored as null (the guest then follows the reservation if its dates change), so the response can differ from the request. The update is a full replace: leaving it out resets the guest's stay, so send back what you read.
+             * @example 2026-07-11
+             */
+            fromDate?: string | null;
+            /**
+             * Format: date
+             * @description The guest's last day when the guest leaves before the reservation ends: a UTC date, compared with the UTC date of endTime, so it is on or before that date and not before the first day or fromDate. Omit or null when the guest leaves with the group. A date equal to the last day of the reservation is stored as null. Leaving it out in an update resets the guest's stay, so send back what you read.
+             * @example 2026-07-12
+             */
+            toDate?: string | null;
+        };
+        /** ReservationCreate */
+        ReservationCreate: {
+            /**
+             * Format: date-time
+             * @description When the stay starts (UTC instant). Its UTC date is the first day of the stay: an Oslo time between 00:00 and 02:00 belongs to the previous UTC day. At most 2 years ahead, in the past is allowed.
+             * @example 2026-07-10T16:00:00Z
+             */
+            startTime: string;
+            /**
+             * Format: date-time
+             * @description When the stay ends (UTC instant), after startTime. Its UTC date is the last day of the stay, and at most 60 nights after the first day. It must not overlap another reservation: a handover where one reservation ends at or before the time the next starts is allowed.
+             * @example 2026-07-12T13:00:00Z
+             */
+            endTime: string;
+            /** @description The guests of the reservation: 1-50, each guest at most once, all existing. */
+            guests: components["schemas"]["ReservationGuestRef"][];
+        };
+        /** ReservationUpdate */
+        ReservationUpdate: {
+            /**
+             * @description The version of the reservation that the client read, from GET /api/reservations. An outdated version gives 412.
+             * @example 3
+             */
+            version: number;
+            /**
+             * Format: date-time
+             * @description When the stay starts (UTC instant). Its UTC date is the first day of the stay: an Oslo time between 00:00 and 02:00 belongs to the previous UTC day. At most 2 years ahead when the times change, in the past is allowed.
+             * @example 2026-07-10T16:00:00Z
+             */
+            startTime: string;
+            /**
+             * Format: date-time
+             * @description When the stay ends (UTC instant), after startTime. Its UTC date is the last day of the stay, and at most 60 nights after the first day. It must not overlap another reservation. Changing the times clears the check-in, the check-out and the linked trips of the reservation, which are derived again right after the commit.
+             * @example 2026-07-12T13:00:00Z
+             */
+            endTime: string;
+            /** @description The guests of the reservation: 1-50, each guest at most once, all existing. */
+            guests: components["schemas"]["ReservationGuestRef"][];
         };
         /**
          * GuestPeriodStats
-         * @description Guest statistics for one period (the current year or all years), counting only started reservations up to today.
+         * @description Guest statistics for one period (the current year or all years), counted with the guest's own stays that have started, up to today (falls back to the reservation period when the guest has no own dates).
          */
         GuestPeriodStats: {
-            /** @description Number of reservations the guest was part of that started in the period (arrival date). */
+            /**
+             * @description Number of stays of the guest that arrived in the period (guest's own arrival date).
+             * @example 5
+             */
             totalVisits: number;
-            /** @description Number of days the guest was present at the cabin in the period, up to and including today. */
+            /**
+             * @description Number of days of the guest's own stay within the period, up to and including today.
+             * @example 14
+             */
             totalDays: number;
-            /** @description Number of nights of the reservations the guest was part of that started in the period (full stay, also for an ongoing stay). Same counting as totalVisits. */
+            /**
+             * @description Number of nights of the guest's own stays that arrived in the period (the whole stay, also for an ongoing stay). Same counting as totalVisits.
+             * @example 10
+             */
             totalNights: number;
-            /** @description Guest's rank by total visits among all guests, family included, in the period (1 = most). Tied guests share rank. Null if no visits. */
+            /**
+             * @description Guest's rank by total visits among all guests, family included, in the period (1 = most). Tied guests share rank. Null if no visits.
+             * @example 3
+             */
             visitsRank?: number | null;
-            /** @description Guest's rank by total days among all guests, family included, in the period (1 = most). Tied guests share rank. Null if no visits. */
+            /**
+             * @description Guest's rank by total days among all guests, family included, in the period (1 = most). Tied guests share rank. Null if no visits.
+             * @example 2
+             */
             daysRank?: number | null;
-            /** @description Guest's rank by total visits among guests only, family members excluded (1 = most). Tied guests share rank. Null for family members and if no visits. */
+            /**
+             * @description Guest's rank by total visits among guests only, family members excluded (1 = most). Tied guests share rank. Null for family members and if no visits.
+             * @example 2
+             */
             visitsRankAmongGuests?: number | null;
-            /** @description Guest's rank by total days among guests only, family members excluded (1 = most). Tied guests share rank. Null for family members and if no visits. */
+            /**
+             * @description Guest's rank by total days among guests only, family members excluded (1 = most). Tied guests share rank. Null for family members and if no visits.
+             * @example 1
+             */
             daysRankAmongGuests?: number | null;
         };
         /**
-         * GuestStats
-         * @description Statistics for one guest as of today, counting only reservations that have started. Used for the guests of the current and next reservation in the live stats and for the guest profile.
+         * LiveGuestStats
+         * @description A guest of the current or next reservation: the statistics of the guest as of today, counted with the guest's own stays (a guest's own dates, or the reservation period when the guest has no own dates) that have started, and the dates of the guest's own stay in this reservation. The reservation lists every linked guest, so a guest who has not arrived yet or has already left is listed too: compare stayStartDate and stayEndDate with today.
          */
-        GuestStats: {
-            /** @description Internal unique identifier of the guest. */
+        LiveGuestStats: {
+            /**
+             * @description Internal unique identifier of the guest.
+             * @example ola.nordmann
+             */
             guestId: string;
-            /** @description Guest's first name. */
+            /**
+             * @description Guest's first name.
+             * @example Ola
+             */
             firstName: string;
-            /** @description Guest's last name. */
+            /**
+             * @description Guest's last name.
+             * @example Nordmann
+             */
             lastName: string;
-            /** @description Guest's age in the current year (current year - birthYear). */
+            /**
+             * @description Guest's age in the current year (current year - birthYear).
+             * @example 38
+             */
             age: number;
-            /** @description True if the guest is a family member (owner of the cabin), false for other guests. */
+            /**
+             * @description True if the guest is a family member (owner of the cabin), false for other guests.
+             * @example true
+             */
             isFamily: boolean;
-            /** @description Relative URL to the guest's avatar image (JPEG), see GET /api/guests/{guestId}/avatar. Null if the guest has no avatar. */
+            /**
+             * @description Relative URL to the guest's avatar image (JPEG), see GET /api/guests/{guestId}/avatar. Null if the guest has no avatar.
+             * @example /api/guests/ola.nordmann/avatar?v=1767225600000
+             */
             avatarUrl?: string | null;
-            /** @description True if the guest has no reservations that started before this reservation. In a guest profile this is true only when the guest is at the cabin right now and the ongoing visit is the first one. */
+            /**
+             * @description True if the guest has no stay that started before this one (guest's own arrival date). In a guest profile this is true only when the guest is at the cabin right now and the ongoing visit is the first one.
+             * @example false
+             */
             isFirstVisit: boolean;
             /**
              * Format: date
-             * @description Start date of the guest's first started reservation. Null if the guest has no started reservations.
+             * @description Own arrival date of the guest's first started stay. Null if the guest has no started stays.
+             * @example 2019-02-16
              */
             firstVisitDate?: string | null;
             /**
              * Format: date
-             * @description End date of the guest's last completed visit before this reservation. Null if there is no completed visit. In a guest profile: the last visit before the current one if the guest is at the cabin right now, otherwise the last completed visit.
+             * @description Own departure date of the guest's last completed stay before this one. Null if there is no completed stay. In a guest profile: the last visit before the current one if the guest is at the cabin right now, otherwise the last completed visit.
+             * @example 2026-04-05
              */
             lastVisitDate?: string | null;
-            /** @description Years in which the guest has started reservations, in descending order. */
+            /**
+             * @description Years in which the guest has arrived (own arrival date), in descending order.
+             * @example [
+             *       2026,
+             *       2025,
+             *       2023
+             *     ]
+             */
             yearsVisited: number[];
             currentYear: components["schemas"]["GuestPeriodStats"];
             allTime: components["schemas"]["GuestPeriodStats"];
+            /**
+             * Format: date
+             * @description First day of the guest's own stay in this reservation (inclusive): the guest's own arrival date, or the first day of the reservation when the guest has no own dates.
+             * @example 2026-07-11
+             */
+            stayStartDate: string;
+            /**
+             * Format: date
+             * @description Last day of the guest's own stay in this reservation: the guest's own departure date, or the last day of the reservation when the guest has no own dates. Same semantics as the end date of the reservation.
+             * @example 2026-07-12
+             */
+            stayEndDate: string;
         };
         /**
          * CurrentReservationInfo
@@ -330,20 +958,31 @@ export interface components {
             /**
              * Format: date
              * @description First day of the current reservation (check-in date, inclusive).
+             * @example 2026-07-10
              */
             startDate: string;
             /**
              * Format: date
              * @description Last day of the current reservation (check-out date). The reservation is still current on this day, and the cabin is free the day after.
+             * @example 2026-07-12
              */
             endDate: string;
-            /** @description Statistics for each guest in the current reservation, ordered by current year days rank. */
-            guests: components["schemas"]["GuestStats"][];
-            /** @description Number of nights remaining in the current reservation, from today until check-out. 0 on the check-out day. */
+            /** @description Every linked guest of the current reservation, ordered by current year days rank, with the dates of the guest's own stay. A guest who has not arrived yet or has left is listed too, see stayStartDate and stayEndDate. */
+            guests: components["schemas"]["LiveGuestStats"][];
+            /**
+             * @description Number of nights remaining in the current reservation, from today until check-out. 0 on the check-out day.
+             * @example 1
+             */
             remainingNights: number;
-            /** @description Order number of the current reservation when all reservations are sorted ascending on start date, starting at 1. */
+            /**
+             * @description Order number of the current reservation when all reservations are sorted ascending on start date, starting at 1.
+             * @example 139
+             */
             reservationOrder: number;
-            /** @description Order number of the current reservation among the reservations that have started in the same year as its start date, sorted ascending on start date, starting at 1. */
+            /**
+             * @description Order number of the current reservation among the reservations that have started in the same year as its start date, sorted ascending on start date, starting at 1.
+             * @example 12
+             */
             reservationOrderInYear: number;
         } | null;
         /**
@@ -354,54 +993,90 @@ export interface components {
             /**
              * Format: date
              * @description First day of the next reservation (check-in date, inclusive).
+             * @example 2026-07-10
              */
             startDate: string;
             /**
              * Format: date
              * @description Last day of the next reservation (check-out date, exclusive).
+             * @example 2026-07-12
              */
             endDate: string;
-            /** @description Statistics for each guest in the next reservation, ordered by current year days rank. */
-            guests: components["schemas"]["GuestStats"][];
-            /** @description Number of days from today until the next reservation starts. */
+            /** @description Every linked guest of the next reservation, ordered by current year days rank, with the dates of the guest's own stay. A guest who arrives after the reservation starts is listed too, see stayStartDate. */
+            guests: components["schemas"]["LiveGuestStats"][];
+            /**
+             * @description Number of days from today until the next reservation starts.
+             * @example 12
+             */
             daysUntil: number;
-            /** @description Order number of the next reservation when all reservations are sorted ascending on start date, starting at 1. */
+            /**
+             * @description Order number of the next reservation when all reservations are sorted ascending on start date, starting at 1.
+             * @example 139
+             */
             reservationOrder: number;
-            /** @description Order number of the next reservation among the reservations that have started in the same year as its start date, sorted ascending on start date, starting at 1. */
+            /**
+             * @description Order number of the next reservation among the reservations that have started in the same year as its start date, sorted ascending on start date, starting at 1.
+             * @example 12
+             */
             reservationOrderInYear: number;
         } | null;
         /** FactSegment */
         FactSegment: {
-            /** @description Part of the text. */
+            /**
+             * @description Part of the text.
+             * @example 12 ganger
+             */
             text: string;
             /**
              * @description What the part is, so the client can style it. Omitted for plain text.
+             * @example stat
              * @enum {string}
              */
             kind?: "text" | "stat" | "guest";
         };
         /** FunFact */
         FunFact: {
-            /** @description Guest the fact is about. Null for facts about the whole group or the cabin. */
+            /**
+             * @description Guest the fact is about. Null for facts about the whole group or the cabin.
+             * @example ola.nordmann
+             */
             guestId?: string | null;
-            /** @description Ready-to-display text in Norwegian. Always equal to the segments joined together. */
+            /**
+             * @description Ready-to-display text in Norwegian. Always equal to the segments joined together.
+             * @example Ola har vært på hytta 12 ganger
+             */
             text: string;
-            /** @description Importance from 0 to 100, higher is more important. Lists are sorted by priority, descending. */
+            /**
+             * @description Importance from 0 to 100, higher is more important. Lists are sorted by priority, descending.
+             * @example 80
+             */
             priority: number;
             /** @description The text split into parts for highlighting. Joined together they give the text. Clients should treat an unknown kind as plain text. */
             segments?: components["schemas"]["FactSegment"][];
         };
         /** LiveStats */
         LiveStats: {
-            /** @description True if the cabin is currently occupied: a reservation has started and its check-out date has not passed, so also on the check-out day. */
+            /**
+             * @description True if the cabin is currently occupied: a reservation has started and its check-out date has not passed, so also on the check-out day.
+             * @example true
+             */
             isOccupied: boolean;
             currentReservation?: components["schemas"]["CurrentReservationInfo"];
             nextReservation?: components["schemas"]["NextReservationInfo"];
-            /** @description Total number of reservations that have started, across all years. Future bookings are excluded. */
+            /**
+             * @description Total number of reservations that have started, across all years. Future bookings are excluded.
+             * @example 139
+             */
             allTimeVisits: number;
-            /** @description Total number of nights across all reservations that have started. Future bookings are excluded. */
+            /**
+             * @description Total number of nights across all reservations that have started. Future bookings are excluded.
+             * @example 412
+             */
             allTimeNights: number;
-            /** @description Total number of unique guests registered in the system. */
+            /**
+             * @description Total number of unique guests registered in the system.
+             * @example 31
+             */
             allTimeUniqueGuests: number;
             /** @description Fun facts about the guests of the current reservation, sorted by priority. Empty if the cabin is not occupied. */
             guestFunFacts: components["schemas"]["FunFact"][];
@@ -410,24 +1085,97 @@ export interface components {
             /** @description Fun facts about the next upcoming reservation, sorted by priority. Empty if no future reservation exists. */
             nextVisitFunFacts: components["schemas"]["FunFact"][];
         };
+        /**
+         * GuestStats
+         * @description Statistics for one guest as of today, counted with the guest's own stays (a guest's own dates, or the reservation period when the guest has no own dates) that have started. Used for the guests of the current and next reservation in the live stats and for the guest profile.
+         */
+        GuestStats: {
+            /**
+             * @description Internal unique identifier of the guest.
+             * @example ola.nordmann
+             */
+            guestId: string;
+            /**
+             * @description Guest's first name.
+             * @example Ola
+             */
+            firstName: string;
+            /**
+             * @description Guest's last name.
+             * @example Nordmann
+             */
+            lastName: string;
+            /**
+             * @description Guest's age in the current year (current year - birthYear).
+             * @example 38
+             */
+            age: number;
+            /**
+             * @description True if the guest is a family member (owner of the cabin), false for other guests.
+             * @example true
+             */
+            isFamily: boolean;
+            /**
+             * @description Relative URL to the guest's avatar image (JPEG), see GET /api/guests/{guestId}/avatar. Null if the guest has no avatar.
+             * @example /api/guests/ola.nordmann/avatar?v=1767225600000
+             */
+            avatarUrl?: string | null;
+            /**
+             * @description True if the guest has no stay that started before this one (guest's own arrival date). In a guest profile this is true only when the guest is at the cabin right now and the ongoing visit is the first one.
+             * @example false
+             */
+            isFirstVisit: boolean;
+            /**
+             * Format: date
+             * @description Own arrival date of the guest's first started stay. Null if the guest has no started stays.
+             * @example 2019-02-16
+             */
+            firstVisitDate?: string | null;
+            /**
+             * Format: date
+             * @description Own departure date of the guest's last completed stay before this one. Null if there is no completed stay. In a guest profile: the last visit before the current one if the guest is at the cabin right now, otherwise the last completed visit.
+             * @example 2026-04-05
+             */
+            lastVisitDate?: string | null;
+            /**
+             * @description Years in which the guest has arrived (own arrival date), in descending order.
+             * @example [
+             *       2026,
+             *       2025,
+             *       2023
+             *     ]
+             */
+            yearsVisited: number[];
+            currentYear: components["schemas"]["GuestPeriodStats"];
+            allTime: components["schemas"]["GuestPeriodStats"];
+        };
         /** GuestVisit */
         GuestVisit: {
             /**
              * Format: date
-             * @description First day of the visit (check-in date, inclusive).
+             * @description First day of the guest's own stay (inclusive): the guest's own arrival date, or the check-in date of the reservation when the guest has no own dates.
+             * @example 2026-07-10
              */
             startDate: string;
             /**
              * Format: date
-             * @description Last day of the visit (check-out date). Same semantics as the end date of a reservation.
+             * @description Last day of the guest's own stay: the guest's own departure date, or the check-out date of the reservation when the guest has no own dates. Same semantics as the end date of a reservation.
+             * @example 2026-07-12
              */
             endDate: string;
-            /** @description Number of calendar days of the whole visit, including arrival and departure day. */
+            /**
+             * @description Number of calendar days of the guest's own stay, including arrival and departure day.
+             * @example 3
+             */
             days: number;
-            /** @description Number of nights of the whole visit. */
+            /**
+             * @description Number of nights of the guest's own stay.
+             * @example 2
+             */
             nights: number;
             /**
-             * @description Where the visit stands today: COMPLETED (the guest has left), ONGOING (the guest is at the cabin) or UPCOMING (the visit has not started yet).
+             * @description Where the guest's own stay stands today: COMPLETED (the guest has left), ONGOING (the guest is at the cabin) or UPCOMING (the guest has not arrived yet, also when the reservation has started).
+             * @example ONGOING
              * @enum {string}
              */
             status: "COMPLETED" | "ONGOING" | "UPCOMING";
@@ -442,13 +1190,25 @@ export interface components {
         };
         /** CurrentYearStats */
         CurrentYearStats: {
-            /** @description The calendar year this summary covers. */
+            /**
+             * @description The calendar year this summary covers.
+             * @example 2026
+             */
             year: number;
-            /** @description Number of reservations that started in this calendar year. */
+            /**
+             * @description Number of reservations that started in this calendar year.
+             * @example 12
+             */
             visits: number;
-            /** @description Total nights spent at the cabin during this calendar year, counting only nights within the year boundary. */
+            /**
+             * @description Total nights spent at the cabin during this calendar year, counting only nights within the year boundary.
+             * @example 10
+             */
             totalNights: number;
-            /** @description Total driving distance in kilometres for all trips to and from the cabin this year. Null if no vehicle trip data exists. */
+            /**
+             * @description Total driving distance in kilometres for all trips to and from the cabin this year. Null if no vehicle trip data exists.
+             * @example 2476.3
+             */
             totalDistanceKm?: number | null;
         };
         /**
@@ -456,11 +1216,20 @@ export interface components {
          * @description Number of reservation starts in a given month.
          */
         MonthlyVisitCount: {
-            /** @description Month number (1 = January, 12 = December). */
+            /**
+             * @description Month number (1 = January, 12 = December).
+             * @example 7
+             */
             monthNumber: number;
-            /** @description Localised month name (e.g. "Januar"). */
+            /**
+             * @description Localised month name (e.g. "Januar").
+             * @example Juli
+             */
             monthName: string;
-            /** @description Number of reservation starts in this month. */
+            /**
+             * @description Number of reservation starts in this month.
+             * @example 2
+             */
             visitCount: number;
         } | null;
         /**
@@ -468,13 +1237,25 @@ export interface components {
          * @description Visit count for this year with comparisons against the previous year.
          */
         YearVisitsStats: {
-            /** @description Number of reservations that started in this calendar year. */
+            /**
+             * @description Number of reservations that started in this calendar year.
+             * @example 5
+             */
             totalVisits: number;
-            /** @description Difference between this year's visit count and the previous year's visit count. Positive means more visits than last year. */
+            /**
+             * @description Difference between this year's visit count and the previous year's visit count. Positive means more visits than last year.
+             * @example 2
+             */
             comparedToPreviousYear: number;
-            /** @description Average number of visits per calendar month (totalVisits / 12). */
+            /**
+             * @description Average number of visits per calendar month (totalVisits / 12).
+             * @example 1.5
+             */
             avgMonthlyVisits: number;
-            /** @description Average number of guests per reservation this year. Null if there are no reservations. */
+            /**
+             * @description Average number of guests per reservation this year (reservation period: every linked guest counts, whatever their own stay). Null if there are no reservations.
+             * @example 4.2
+             */
             avgGroupSize?: number | null;
             monthMostVisits?: components["schemas"]["MonthlyVisitCount"];
             monthFewestVisits?: components["schemas"]["MonthlyVisitCount"];
@@ -484,11 +1265,20 @@ export interface components {
          * @description The month in which the single longest individual stay (by days) started this year. Null if no reservations exist.
          */
         MonthlyDaysCount: {
-            /** @description Month number (1 = January, 12 = December). */
+            /**
+             * @description Month number (1 = January, 12 = December).
+             * @example 7
+             */
             monthNumber: number;
-            /** @description Localised month name (e.g. "Januar"). */
+            /**
+             * @description Localised month name (e.g. "Januar").
+             * @example Juli
+             */
             monthName: string;
-            /** @description Duration in days of the longest individual stay that started in this month. */
+            /**
+             * @description Duration in days of the longest individual stay that started in this month.
+             * @example 6
+             */
             daysCount: number;
         } | null;
         /**
@@ -496,15 +1286,30 @@ export interface components {
          * @description Occupied-day statistics for this year (including departure day).
          */
         YearDaysStats: {
-            /** @description Total number of occupied days in this year across all reservations, counting overlapping reservations only once per day. Departure day is counted as an occupied day. */
+            /**
+             * @description Total number of occupied days in this year across all reservations, counting overlapping reservations only once per day. Departure day is counted as an occupied day.
+             * @example 14
+             */
             totalDays: number;
-            /** @description Shortest stay in days (full duration, arrival and departure day included) among reservations that started in this year. Null if no reservations exist. */
+            /**
+             * @description Shortest stay in days (full duration, arrival and departure day included) among reservations that started in this year. Null if no reservations exist.
+             * @example 2
+             */
             minDays?: number | null;
-            /** @description Longest stay in days (full duration, arrival and departure day included) among reservations that started in this year. Null if no reservations exist. */
+            /**
+             * @description Longest stay in days (full duration, arrival and departure day included) among reservations that started in this year. Null if no reservations exist.
+             * @example 6
+             */
             maxDays?: number | null;
-            /** @description Average stay in days (full duration, arrival and departure day included) among reservations that started in this year. Null if no reservations exist. */
+            /**
+             * @description Average stay in days (full duration, arrival and departure day included) among reservations that started in this year. Null if no reservations exist.
+             * @example 3.5
+             */
             avgDays?: number | null;
-            /** @description Difference between totalDays for this year and totalDays for the previous year. Positive means more occupied days than last year. */
+            /**
+             * @description Difference between totalDays for this year and totalDays for the previous year. Positive means more occupied days than last year.
+             * @example 2
+             */
             comparedToPreviousYear: number;
             monthLongestVisit?: components["schemas"]["MonthlyDaysCount"];
         };
@@ -513,17 +1318,35 @@ export interface components {
          * @description Occupied-night statistics for this year (excluding departure day).
          */
         YearNightsStats: {
-            /** @description Total number of occupied nights in this year across all reservations, counting overlapping reservations only once per night. Departure night is not counted. */
+            /**
+             * @description Total number of occupied nights in this year across all reservations, counting overlapping reservations only once per night. Departure night is not counted.
+             * @example 10
+             */
             totalNights: number;
-            /** @description Shortest stay in nights (full duration) among reservations that started in this year. Null if no reservations exist. */
+            /**
+             * @description Shortest stay in nights (full duration) among reservations that started in this year. Null if no reservations exist.
+             * @example 1
+             */
             minNights?: number | null;
-            /** @description Longest stay in nights (full duration) among reservations that started in this year. Null if no reservations exist. */
+            /**
+             * @description Longest stay in nights (full duration) among reservations that started in this year. Null if no reservations exist.
+             * @example 5
+             */
             maxNights?: number | null;
-            /** @description Average stay in nights (full duration) among reservations that started in this year. Null if no reservations exist. */
+            /**
+             * @description Average stay in nights (full duration) among reservations that started in this year. Null if no reservations exist.
+             * @example 2.5
+             */
             avgNights?: number | null;
-            /** @description Average number of occupied nights per calendar month (totalNights / 12). */
+            /**
+             * @description Average number of occupied nights per calendar month (totalNights / 12).
+             * @example 3.8
+             */
             avgMonthlyNights: number;
-            /** @description Difference between totalNights for this year and totalNights for the previous year. Positive means more occupied nights than last year. */
+            /**
+             * @description Difference between totalNights for this year and totalNights for the previous year. Positive means more occupied nights than last year.
+             * @example 2
+             */
             comparedToPreviousYear: number;
         };
         /**
@@ -531,11 +1354,20 @@ export interface components {
          * @description Occupancy percentages for a period (year or month) across days, weeks and, for years, months.
          */
         OccupancyStats: {
-            /** @description Percentage of calendar days in the period where the cabin was occupied, including the departure day. E.g. 25.0 means 25%. */
+            /**
+             * @description Percentage of calendar days in the period where the cabin was occupied, including the departure day. E.g. 25.0 means 25%.
+             * @example 25
+             */
             dayOccupancy: number;
-            /** @description Percentage of ISO weeks in the period that contained at least one occupied day. E.g. 50.0 means half of all weeks had at least one visit. */
+            /**
+             * @description Percentage of ISO weeks in the period that contained at least one occupied day. E.g. 50.0 means half of all weeks had at least one visit.
+             * @example 38.5
+             */
             weekOccupancy: number;
-            /** @description Percentage of the 12 calendar months in the year that contained at least one occupied day. Only present in yearly statistics, null in monthly context. */
+            /**
+             * @description Percentage of the 12 calendar months in the year that contained at least one occupied day. Only present in yearly statistics, null in monthly context.
+             * @example 75
+             */
             monthOccupancy?: number | null;
         };
         /**
@@ -543,35 +1375,71 @@ export interface components {
          * @description The guest with the most total days at the cabin in the year.
          */
         TopGuestByDays: {
-            /** @description Internal unique identifier of the guest. */
+            /**
+             * @description Internal unique identifier of the guest.
+             * @example ola.nordmann
+             */
             guestId: string;
-            /** @description Guest's first name. */
+            /**
+             * @description Guest's first name.
+             * @example Ola
+             */
             firstName: string;
-            /** @description Guest's last name. */
+            /**
+             * @description Guest's last name.
+             * @example Nordmann
+             */
             lastName: string;
-            /** @description Guest's age in the reference year (ageYear - birthYear). */
+            /**
+             * @description Guest's age in the reference year (ageYear - birthYear).
+             * @example 38
+             */
             age: number;
-            /** @description Number of reservations the guest was part of that started in the year (arrival date). */
+            /**
+             * @description Number of stays of the guest that arrived in the year (guest's own arrival date; the reservation start when the guest has no own dates).
+             * @example 5
+             */
             totalVisits: number;
-            /** @description Total number of days the guest was present at the cabin in the year. */
+            /**
+             * @description Total number of days of the guest's own stay within the year (falls back to the reservation period when the guest has no own dates).
+             * @example 14
+             */
             totalDays: number;
         } | null;
         /**
          * GuestVisitStats
-         * @description A guest's visits and days at the cabin within a period (year or month).
+         * @description A guest's visits and days at the cabin within a period (year or month), counted with the guest's own stay (falls back to the reservation period when the guest has no own dates).
          */
         GuestVisitStats: {
-            /** @description Internal unique identifier of the guest. */
+            /**
+             * @description Internal unique identifier of the guest.
+             * @example ola.nordmann
+             */
             guestId: string;
-            /** @description Guest's first name. */
+            /**
+             * @description Guest's first name.
+             * @example Ola
+             */
             firstName: string;
-            /** @description Guest's last name. */
+            /**
+             * @description Guest's last name.
+             * @example Nordmann
+             */
             lastName: string;
-            /** @description Guest's age in the reference year (ageYear - birthYear). */
+            /**
+             * @description Guest's age in the reference year (ageYear - birthYear).
+             * @example 38
+             */
             age: number;
-            /** @description Number of reservations the guest was part of that started in the period (arrival date). */
+            /**
+             * @description Number of stays of the guest that arrived in the period (guest's own arrival date; the reservation start when the guest has no own dates).
+             * @example 5
+             */
             totalVisits: number;
-            /** @description Total number of days the guest was present at the cabin in the period, counting only days that fall within the period boundary. */
+            /**
+             * @description Total number of days of the guest's own stay within the period, counting only days that fall within the period boundary (falls back to the reservation period when the guest has no own dates).
+             * @example 14
+             */
             totalDays: number;
         };
         /**
@@ -579,35 +1447,80 @@ export interface components {
          * @description Driving distance statistics for trips to, from, and at the cabin this year. Null if no vehicle trip data exists.
          */
         YearDrivingDistanceStats: {
-            /** @description Total driving distance in kilometres for all trips to the cabin this year. */
+            /**
+             * @description Total driving distance in kilometres for all trips to the cabin this year.
+             * @example 1240.5
+             */
             totalToCabinKm: number;
-            /** @description Shortest single trip distance to the cabin in km this year. Null if no trips exist. */
+            /**
+             * @description Shortest single trip distance to the cabin in km this year. Null if no trips exist.
+             * @example 148.2
+             */
             minToCabinKm?: number | null;
-            /** @description Longest single trip distance to the cabin in km this year. Null if no trips exist. */
+            /**
+             * @description Longest single trip distance to the cabin in km this year. Null if no trips exist.
+             * @example 162.7
+             */
             maxToCabinKm?: number | null;
-            /** @description Average trip distance to the cabin in km this year. Null if no trips exist. */
+            /**
+             * @description Average trip distance to the cabin in km this year. Null if no trips exist.
+             * @example 155.1
+             */
             avgToCabinKm?: number | null;
-            /** @description Total driving distance in kilometres for all trips from the cabin this year. */
+            /**
+             * @description Total driving distance in kilometres for all trips from the cabin this year.
+             * @example 1235.8
+             */
             totalFromCabinKm: number;
-            /** @description Shortest single trip distance from the cabin in km this year. Null if no trips exist. */
+            /**
+             * @description Shortest single trip distance from the cabin in km this year. Null if no trips exist.
+             * @example 147.9
+             */
             minFromCabinKm?: number | null;
-            /** @description Longest single trip distance from the cabin in km this year. Null if no trips exist. */
+            /**
+             * @description Longest single trip distance from the cabin in km this year. Null if no trips exist.
+             * @example 163.4
+             */
             maxFromCabinKm?: number | null;
-            /** @description Average trip distance from the cabin in km this year. Null if no trips exist. */
+            /**
+             * @description Average trip distance from the cabin in km this year. Null if no trips exist.
+             * @example 154.5
+             */
             avgFromCabinKm?: number | null;
-            /** @description Total driving distance in kilometres for all trips at (around) the cabin this year. */
+            /**
+             * @description Total driving distance in kilometres for all trips at (around) the cabin this year.
+             * @example 86.4
+             */
             totalAtCabinKm: number;
-            /** @description Average of VehicleTrip.averageSpeed across all toCabin legs, for the fastest reservation trip to the cabin this year. Null if no trips exist. */
+            /**
+             * @description Average of VehicleTrip.averageSpeed across all toCabin legs, for the fastest reservation trip to the cabin this year. Null if no trips exist.
+             * @example 72.5
+             */
             minAvgSpeedToCabinKmh?: number | null;
-            /** @description Average of VehicleTrip.averageSpeed across all toCabin legs, for the slowest reservation trip to the cabin this year. Null if no trips exist. */
+            /**
+             * @description Average of VehicleTrip.averageSpeed across all toCabin legs, for the slowest reservation trip to the cabin this year. Null if no trips exist.
+             * @example 91
+             */
             maxAvgSpeedToCabinKmh?: number | null;
-            /** @description Mean of avgSpeedKmh across all reservations with a toCabin trip this year. Null if no trips exist. */
+            /**
+             * @description Mean of avgSpeedKmh across all reservations with a toCabin trip this year. Null if no trips exist.
+             * @example 83.2
+             */
             avgAvgSpeedToCabinKmh?: number | null;
-            /** @description Average of VehicleTrip.averageSpeed across all fromCabin legs, for the fastest reservation trip from the cabin this year. Null if no trips exist. */
+            /**
+             * @description Average of VehicleTrip.averageSpeed across all fromCabin legs, for the fastest reservation trip from the cabin this year. Null if no trips exist.
+             * @example 70.8
+             */
             minAvgSpeedFromCabinKmh?: number | null;
-            /** @description Average of VehicleTrip.averageSpeed across all fromCabin legs, for the slowest reservation trip from the cabin this year. Null if no trips exist. */
+            /**
+             * @description Average of VehicleTrip.averageSpeed across all fromCabin legs, for the slowest reservation trip from the cabin this year. Null if no trips exist.
+             * @example 89.5
+             */
             maxAvgSpeedFromCabinKmh?: number | null;
-            /** @description Mean of avgSpeedKmh across all reservations with a fromCabin trip this year. Null if no trips exist. */
+            /**
+             * @description Mean of avgSpeedKmh across all reservations with a fromCabin trip this year. Null if no trips exist.
+             * @example 81.6
+             */
             avgAvgSpeedFromCabinKmh?: number | null;
         } | null;
         /**
@@ -615,11 +1528,20 @@ export interface components {
          * @description Electric vehicle energy statistics for trips to and from the cabin this year. Null if no vehicle trip data exists.
          */
         YearEvStats: {
-            /** @description Total energy consumed (kWh) for all trips to and from the cabin this year, derived from average consumption × distance per trip. Null if no vehicle trip data exists. */
+            /**
+             * @description Total energy consumed (kWh) for all trips to and from the cabin this year, derived from average consumption × distance per trip. Counts only trips with energy data, so it is partial for a year with both old and new trips. Null if no trip has energy data.
+             * @example 245.6
+             */
             totalEnergyConsumedKwh?: number | null;
-            /** @description Distance-weighted average energy consumption in kWh per 100 km across all trips to and from the cabin this year. Null if no vehicle trip data exists. */
+            /**
+             * @description Distance-weighted average energy consumption in kWh per 100 km across the trips to and from the cabin this year that have energy data (weighted by the distance of those trips only). Null if no trip has energy data.
+             * @example 19.8
+             */
             avgEnergyConsumptionKwhPer100km?: number | null;
-            /** @description Total energy regenerated (kWh) through regenerative braking across all trips to and from the cabin this year. Null if no vehicle trip data exists. */
+            /**
+             * @description Total energy regenerated (kWh) through regenerative braking across the trips to and from the cabin this year that have energy data. Null if no trip has energy data.
+             * @example 38.2
+             */
             totalEnergyRegeneratedKwh?: number | null;
         } | null;
         /**
@@ -627,31 +1549,70 @@ export interface components {
          * @description Driving duration statistics (avg/min/max) for trips to and from the cabin this year. Null if no vehicle trip data exists.
          */
         YearDrivingTimeStats: {
-            /** @description The calendar year these driving time statistics cover. */
+            /**
+             * @description The calendar year these driving time statistics cover.
+             * @example 2026
+             */
             year: number;
-            /** @description Average total driving duration to the cabin in minutes, summing all legs per trip (including stops). Null if no trip data exists. */
+            /**
+             * @description Average total driving duration to the cabin in minutes, summing all legs per trip (including stops). Null if no trip data exists.
+             * @example 165
+             */
             avgToCabinMinutes?: number | null;
-            /** @description Average driving duration to the cabin formatted as HH:mm. Null if no trip data exists. */
+            /**
+             * @description Average driving duration to the cabin formatted as HH:mm. Null if no trip data exists.
+             * @example 02:45
+             */
             avgToCabin?: string | null;
-            /** @description Shortest total driving duration to the cabin in minutes across all trips this year. Null if no trip data exists. */
+            /**
+             * @description Shortest total driving duration to the cabin in minutes across all trips this year. Null if no trip data exists.
+             * @example 150
+             */
             minToCabinMinutes?: number | null;
-            /** @description Shortest driving duration to the cabin formatted as HH:mm. Null if no trip data exists. */
+            /**
+             * @description Shortest driving duration to the cabin formatted as HH:mm. Null if no trip data exists.
+             * @example 02:30
+             */
             minToCabin?: string | null;
-            /** @description Longest total driving duration to the cabin in minutes across all trips this year. Null if no trip data exists. */
+            /**
+             * @description Longest total driving duration to the cabin in minutes across all trips this year. Null if no trip data exists.
+             * @example 190
+             */
             maxToCabinMinutes?: number | null;
-            /** @description Longest driving duration to the cabin formatted as HH:mm. Null if no trip data exists. */
+            /**
+             * @description Longest driving duration to the cabin formatted as HH:mm. Null if no trip data exists.
+             * @example 03:10
+             */
             maxToCabin?: string | null;
-            /** @description Average total driving duration from the cabin in minutes, summing all legs per trip (including stops). Null if no trip data exists. */
+            /**
+             * @description Average total driving duration from the cabin in minutes, summing all legs per trip (including stops). Null if no trip data exists.
+             * @example 160
+             */
             avgFromCabinMinutes?: number | null;
-            /** @description Average driving duration from the cabin formatted as HH:mm. Null if no trip data exists. */
+            /**
+             * @description Average driving duration from the cabin formatted as HH:mm. Null if no trip data exists.
+             * @example 02:40
+             */
             avgFromCabin?: string | null;
-            /** @description Shortest total driving duration from the cabin in minutes across all trips this year. Null if no trip data exists. */
+            /**
+             * @description Shortest total driving duration from the cabin in minutes across all trips this year. Null if no trip data exists.
+             * @example 145
+             */
             minFromCabinMinutes?: number | null;
-            /** @description Shortest driving duration from the cabin formatted as HH:mm. Null if no trip data exists. */
+            /**
+             * @description Shortest driving duration from the cabin formatted as HH:mm. Null if no trip data exists.
+             * @example 02:25
+             */
             minFromCabin?: string | null;
-            /** @description Longest total driving duration from the cabin in minutes across all trips this year. Null if no trip data exists. */
+            /**
+             * @description Longest total driving duration from the cabin in minutes across all trips this year. Null if no trip data exists.
+             * @example 185
+             */
             maxFromCabinMinutes?: number | null;
-            /** @description Longest driving duration from the cabin formatted as HH:mm. Null if no trip data exists. */
+            /**
+             * @description Longest driving duration from the cabin formatted as HH:mm. Null if no trip data exists.
+             * @example 03:05
+             */
             maxFromCabin?: string | null;
         } | null;
         /**
@@ -659,23 +1620,50 @@ export interface components {
          * @description Average departure and arrival clock times for trips to and from the cabin this year, expressed in Oslo timezone. Null if no vehicle trip data exists.
          */
         YearDrivingMomentStats: {
-            /** @description The calendar year these driving moment statistics cover. */
+            /**
+             * @description The calendar year these driving moment statistics cover.
+             * @example 2026
+             */
             year: number;
-            /** @description Average departure time from home (Oslo timezone) across all toCabin trips this year, expressed as minutes since midnight. E.g. 540 = 09:00. */
+            /**
+             * @description Average departure time from home (Oslo timezone) across all toCabin trips this year, expressed as minutes since midnight. E.g. 540 = 09:00.
+             * @example 930
+             */
             avgDepartureHomeMinutes?: number | null;
-            /** @description Average departure time from home formatted as HH:mm (Oslo timezone). Null if no trip data exists. */
+            /**
+             * @description Average departure time from home formatted as HH:mm (Oslo timezone). Null if no trip data exists.
+             * @example 15:30
+             */
             avgDepartureHome?: string | null;
-            /** @description Average arrival time at the cabin (Oslo timezone) across all toCabin trips this year, expressed as minutes since midnight. */
+            /**
+             * @description Average arrival time at the cabin (Oslo timezone) across all toCabin trips this year, expressed as minutes since midnight.
+             * @example 1095
+             */
             avgArrivalCabinMinutes?: number | null;
-            /** @description Average arrival time at the cabin formatted as HH:mm (Oslo timezone). Null if no trip data exists. */
+            /**
+             * @description Average arrival time at the cabin formatted as HH:mm (Oslo timezone). Null if no trip data exists.
+             * @example 18:15
+             */
             avgArrivalCabin?: string | null;
-            /** @description Average departure time from the cabin (Oslo timezone) across all fromCabin trips this year, expressed as minutes since midnight. */
+            /**
+             * @description Average departure time from the cabin (Oslo timezone) across all fromCabin trips this year, expressed as minutes since midnight.
+             * @example 840
+             */
             avgDepartureCabinMinutes?: number | null;
-            /** @description Average departure time from the cabin formatted as HH:mm (Oslo timezone). Null if no trip data exists. */
+            /**
+             * @description Average departure time from the cabin formatted as HH:mm (Oslo timezone). Null if no trip data exists.
+             * @example 14:00
+             */
             avgDepartureCabin?: string | null;
-            /** @description Average arrival time back home (Oslo timezone) across all fromCabin trips this year, expressed as minutes since midnight. */
+            /**
+             * @description Average arrival time back home (Oslo timezone) across all fromCabin trips this year, expressed as minutes since midnight.
+             * @example 1005
+             */
             avgArrivalHomeMinutes?: number | null;
-            /** @description Average arrival time back home formatted as HH:mm (Oslo timezone). Null if no trip data exists. */
+            /**
+             * @description Average arrival time back home formatted as HH:mm (Oslo timezone). Null if no trip data exists.
+             * @example 16:45
+             */
             avgArrivalHome?: string | null;
         } | null;
         /**
@@ -683,13 +1671,25 @@ export interface components {
          * @description Visit count for this month with comparisons against other reference periods.
          */
         MonthVisitsStats: {
-            /** @description Number of reservations that started in this month. */
+            /**
+             * @description Number of reservations that started in this month.
+             * @example 5
+             */
             totalVisits: number;
-            /** @description Difference between this month's visit count and the previous calendar month's visit count. Positive means more visits than last month. */
+            /**
+             * @description Difference between this month's visit count and the previous calendar month's visit count. Positive means more visits than last month.
+             * @example 1
+             */
             comparedToPreviousMonth: number;
-            /** @description Difference between this month's visit count and the same month in the previous year. Positive means more visits than the same month last year. */
+            /**
+             * @description Difference between this month's visit count and the same month in the previous year. Positive means more visits than the same month last year.
+             * @example -1
+             */
             comparedToSameMonthLastYear: number;
-            /** @description Difference between this month's visit count and the year-to-date monthly average (sum of visits Jan–this month divided by number of months so far). Positive means above average. */
+            /**
+             * @description Difference between this month's visit count and the year-to-date monthly average (sum of visits Jan–this month divided by number of months so far). Positive means above average.
+             * @example 0.5
+             */
             comparedToYearToDateAverage: number;
         };
         /**
@@ -697,17 +1697,35 @@ export interface components {
          * @description Occupied-day statistics for this month (including departure day).
          */
         MonthDaysStats: {
-            /** @description Total number of occupied days in this month across all reservations, counting overlapping reservations only once per day. Departure day is counted as an occupied day. */
+            /**
+             * @description Total number of occupied days in this month across all reservations, counting overlapping reservations only once per day. Departure day is counted as an occupied day.
+             * @example 14
+             */
             totalDays: number;
-            /** @description Shortest stay in days (full duration, arrival and departure day included) among reservations that started in this month. Null if no reservations started this month. */
+            /**
+             * @description Shortest stay in days (full duration, arrival and departure day included) among reservations that started in this month. Null if no reservations started this month.
+             * @example 2
+             */
             minDays?: number | null;
-            /** @description Longest stay in days (full duration, arrival and departure day included) among reservations that started in this month. Null if no reservations started this month. */
+            /**
+             * @description Longest stay in days (full duration, arrival and departure day included) among reservations that started in this month. Null if no reservations started this month.
+             * @example 6
+             */
             maxDays?: number | null;
-            /** @description Average stay in days (full duration, arrival and departure day included) among reservations that started in this month. Null if no reservations started this month. */
+            /**
+             * @description Average stay in days (full duration, arrival and departure day included) among reservations that started in this month. Null if no reservations started this month.
+             * @example 3.5
+             */
             avgDays?: number | null;
-            /** @description Difference between totalDays for this month and totalDays for the previous calendar month. Positive means more occupied days than last month. */
+            /**
+             * @description Difference between totalDays for this month and totalDays for the previous calendar month. Positive means more occupied days than last month.
+             * @example 1
+             */
             comparedToPreviousMonth: number;
-            /** @description Difference between totalDays for this month and totalDays for the same month in the previous year. Positive means more occupied days than the same month last year. */
+            /**
+             * @description Difference between totalDays for this month and totalDays for the same month in the previous year. Positive means more occupied days than the same month last year.
+             * @example -1
+             */
             comparedToSameMonthLastYear: number;
         };
         /**
@@ -715,17 +1733,35 @@ export interface components {
          * @description Occupied-night statistics for this month (excluding departure day).
          */
         MonthNightsStats: {
-            /** @description Total number of occupied nights in this month across all reservations, counting overlapping reservations only once per night. Departure night is not counted. */
+            /**
+             * @description Total number of occupied nights in this month across all reservations, counting overlapping reservations only once per night. Departure night is not counted.
+             * @example 10
+             */
             totalNights: number;
-            /** @description Shortest stay in nights (full duration) among reservations that started in this month. Null if no reservations started this month. */
+            /**
+             * @description Shortest stay in nights (full duration) among reservations that started in this month. Null if no reservations started this month.
+             * @example 1
+             */
             minNights?: number | null;
-            /** @description Longest stay in nights (full duration) among reservations that started in this month. Null if no reservations started this month. */
+            /**
+             * @description Longest stay in nights (full duration) among reservations that started in this month. Null if no reservations started this month.
+             * @example 5
+             */
             maxNights?: number | null;
-            /** @description Average stay in nights (full duration) among reservations that started in this month. Null if no reservations started this month. */
+            /**
+             * @description Average stay in nights (full duration) among reservations that started in this month. Null if no reservations started this month.
+             * @example 2.5
+             */
             avgNights?: number | null;
-            /** @description Difference between totalNights for this month and totalNights for the previous calendar month. Positive means more occupied nights than last month. */
+            /**
+             * @description Difference between totalNights for this month and totalNights for the previous calendar month. Positive means more occupied nights than last month.
+             * @example 1
+             */
             comparedToPreviousMonth: number;
-            /** @description Difference between totalNights for this month and totalNights for the same month in the previous year. Positive means more occupied nights than the same month last year. */
+            /**
+             * @description Difference between totalNights for this month and totalNights for the same month in the previous year. Positive means more occupied nights than the same month last year.
+             * @example -1
+             */
             comparedToSameMonthLastYear: number;
         };
         /**
@@ -733,35 +1769,80 @@ export interface components {
          * @description Driving distance statistics for trips to, from, and at the cabin in this month. Null if no vehicle trip data exists.
          */
         MonthDrivingDistanceStats: {
-            /** @description Total driving distance in kilometres for all trips to the cabin in this month. */
+            /**
+             * @description Total driving distance in kilometres for all trips to the cabin in this month.
+             * @example 1240.5
+             */
             totalToCabinKm: number;
-            /** @description Shortest single trip distance to the cabin in km this month. Null if no trips exist. */
+            /**
+             * @description Shortest single trip distance to the cabin in km this month. Null if no trips exist.
+             * @example 148.2
+             */
             minToCabinKm?: number | null;
-            /** @description Longest single trip distance to the cabin in km this month. Null if no trips exist. */
+            /**
+             * @description Longest single trip distance to the cabin in km this month. Null if no trips exist.
+             * @example 162.7
+             */
             maxToCabinKm?: number | null;
-            /** @description Average trip distance to the cabin in km this month. Null if no trips exist. */
+            /**
+             * @description Average trip distance to the cabin in km this month. Null if no trips exist.
+             * @example 155.1
+             */
             avgToCabinKm?: number | null;
-            /** @description Total driving distance in kilometres for all trips from the cabin in this month. */
+            /**
+             * @description Total driving distance in kilometres for all trips from the cabin in this month.
+             * @example 1235.8
+             */
             totalFromCabinKm: number;
-            /** @description Shortest single trip distance from the cabin in km this month. Null if no trips exist. */
+            /**
+             * @description Shortest single trip distance from the cabin in km this month. Null if no trips exist.
+             * @example 147.9
+             */
             minFromCabinKm?: number | null;
-            /** @description Longest single trip distance from the cabin in km this month. Null if no trips exist. */
+            /**
+             * @description Longest single trip distance from the cabin in km this month. Null if no trips exist.
+             * @example 163.4
+             */
             maxFromCabinKm?: number | null;
-            /** @description Average trip distance from the cabin in km this month. Null if no trips exist. */
+            /**
+             * @description Average trip distance from the cabin in km this month. Null if no trips exist.
+             * @example 154.5
+             */
             avgFromCabinKm?: number | null;
-            /** @description Total driving distance in kilometres for all trips at (around) the cabin in this month. */
+            /**
+             * @description Total driving distance in kilometres for all trips at (around) the cabin in this month.
+             * @example 86.4
+             */
             totalAtCabinKm: number;
-            /** @description Average of VehicleTrip.averageSpeed across all toCabin legs, for the fastest reservation trip to the cabin this month. Null if no trips exist. */
+            /**
+             * @description Average of VehicleTrip.averageSpeed across all toCabin legs, for the fastest reservation trip to the cabin this month. Null if no trips exist.
+             * @example 72.5
+             */
             minAvgSpeedToCabinKmh?: number | null;
-            /** @description Average of VehicleTrip.averageSpeed across all toCabin legs, for the slowest reservation trip to the cabin this month. Null if no trips exist. */
+            /**
+             * @description Average of VehicleTrip.averageSpeed across all toCabin legs, for the slowest reservation trip to the cabin this month. Null if no trips exist.
+             * @example 91
+             */
             maxAvgSpeedToCabinKmh?: number | null;
-            /** @description Mean of avgSpeedKmh across all reservations with a toCabin trip this month. Null if no trips exist. */
+            /**
+             * @description Mean of avgSpeedKmh across all reservations with a toCabin trip this month. Null if no trips exist.
+             * @example 83.2
+             */
             avgAvgSpeedToCabinKmh?: number | null;
-            /** @description Average of VehicleTrip.averageSpeed across all fromCabin legs, for the fastest reservation trip from the cabin this month. Null if no trips exist. */
+            /**
+             * @description Average of VehicleTrip.averageSpeed across all fromCabin legs, for the fastest reservation trip from the cabin this month. Null if no trips exist.
+             * @example 70.8
+             */
             minAvgSpeedFromCabinKmh?: number | null;
-            /** @description Average of VehicleTrip.averageSpeed across all fromCabin legs, for the slowest reservation trip from the cabin this month. Null if no trips exist. */
+            /**
+             * @description Average of VehicleTrip.averageSpeed across all fromCabin legs, for the slowest reservation trip from the cabin this month. Null if no trips exist.
+             * @example 89.5
+             */
             maxAvgSpeedFromCabinKmh?: number | null;
-            /** @description Mean of avgSpeedKmh across all reservations with a fromCabin trip this month. Null if no trips exist. */
+            /**
+             * @description Mean of avgSpeedKmh across all reservations with a fromCabin trip this month. Null if no trips exist.
+             * @example 81.6
+             */
             avgAvgSpeedFromCabinKmh?: number | null;
         } | null;
         /**
@@ -769,43 +1850,100 @@ export interface components {
          * @description Driving duration statistics for trips to and from the cabin in this month. Null if no vehicle trip data exists.
          */
         MonthDrivingTimeStats: {
-            /** @description Month number (1 = January, 12 = December). */
+            /**
+             * @description Month number (1 = January, 12 = December).
+             * @example 7
+             */
             monthNumber: number;
-            /** @description Localised month name (e.g. "Januar"). */
+            /**
+             * @description Localised month name (e.g. "Januar").
+             * @example Juli
+             */
             monthName: string;
-            /** @description The calendar year this month belongs to. */
+            /**
+             * @description The calendar year this month belongs to.
+             * @example 2026
+             */
             year: number;
-            /** @description Average total driving duration to the cabin in minutes this month, summing all legs per trip (including stops). Null if no trip data exists. */
+            /**
+             * @description Average total driving duration to the cabin in minutes this month, summing all legs per trip (including stops). Null if no trip data exists.
+             * @example 165
+             */
             avgToCabinMinutes?: number | null;
-            /** @description Average driving duration to the cabin formatted as HH:mm. Null if no trip data exists. */
+            /**
+             * @description Average driving duration to the cabin formatted as HH:mm. Null if no trip data exists.
+             * @example 02:45
+             */
             avgToCabin?: string | null;
-            /** @description Shortest total driving duration to the cabin in minutes across all trips this month. Null if no trip data exists. */
+            /**
+             * @description Shortest total driving duration to the cabin in minutes across all trips this month. Null if no trip data exists.
+             * @example 150
+             */
             minToCabinMinutes?: number | null;
-            /** @description Shortest driving duration to the cabin formatted as HH:mm. Null if no trip data exists. */
+            /**
+             * @description Shortest driving duration to the cabin formatted as HH:mm. Null if no trip data exists.
+             * @example 02:30
+             */
             minToCabin?: string | null;
-            /** @description Longest total driving duration to the cabin in minutes across all trips this month. Null if no trip data exists. */
+            /**
+             * @description Longest total driving duration to the cabin in minutes across all trips this month. Null if no trip data exists.
+             * @example 190
+             */
             maxToCabinMinutes?: number | null;
-            /** @description Longest driving duration to the cabin formatted as HH:mm. Null if no trip data exists. */
+            /**
+             * @description Longest driving duration to the cabin formatted as HH:mm. Null if no trip data exists.
+             * @example 03:10
+             */
             maxToCabin?: string | null;
-            /** @description Average total driving duration from the cabin in minutes this month, summing all legs per trip (including stops). Null if no trip data exists. */
+            /**
+             * @description Average total driving duration from the cabin in minutes this month, summing all legs per trip (including stops). Null if no trip data exists.
+             * @example 160
+             */
             avgFromCabinMinutes?: number | null;
-            /** @description Average driving duration from the cabin formatted as HH:mm. Null if no trip data exists. */
+            /**
+             * @description Average driving duration from the cabin formatted as HH:mm. Null if no trip data exists.
+             * @example 02:40
+             */
             avgFromCabin?: string | null;
-            /** @description Shortest total driving duration from the cabin in minutes across all trips this month. Null if no trip data exists. */
+            /**
+             * @description Shortest total driving duration from the cabin in minutes across all trips this month. Null if no trip data exists.
+             * @example 145
+             */
             minFromCabinMinutes?: number | null;
-            /** @description Shortest driving duration from the cabin formatted as HH:mm. Null if no trip data exists. */
+            /**
+             * @description Shortest driving duration from the cabin formatted as HH:mm. Null if no trip data exists.
+             * @example 02:25
+             */
             minFromCabin?: string | null;
-            /** @description Longest total driving duration from the cabin in minutes across all trips this month. Null if no trip data exists. */
+            /**
+             * @description Longest total driving duration from the cabin in minutes across all trips this month. Null if no trip data exists.
+             * @example 185
+             */
             maxFromCabinMinutes?: number | null;
-            /** @description Longest driving duration from the cabin formatted as HH:mm. Null if no trip data exists. */
+            /**
+             * @description Longest driving duration from the cabin formatted as HH:mm. Null if no trip data exists.
+             * @example 03:05
+             */
             maxFromCabin?: string | null;
-            /** @description Difference between avgToCabinMinutes this month and avgToCabinMinutes the previous calendar month. Positive means longer average drive than last month. Null if either month has no data. */
+            /**
+             * @description Difference between avgToCabinMinutes this month and avgToCabinMinutes the previous calendar month. Positive means longer average drive than last month. Null if either month has no data.
+             * @example 5
+             */
             diffAvgToCabinMinutesVsPrevMonth?: number | null;
-            /** @description diffAvgToCabinMinutesVsPrevMonth formatted as +HH:mm or -HH:mm. Null if either month has no data. */
+            /**
+             * @description diffAvgToCabinMinutesVsPrevMonth formatted as +HH:mm or -HH:mm. Null if either month has no data.
+             * @example +00:05
+             */
             diffAvgToCabinVsPrevMonth?: string | null;
-            /** @description Difference between avgFromCabinMinutes this month and avgFromCabinMinutes the previous calendar month. Positive means longer average drive than last month. Null if either month has no data. */
+            /**
+             * @description Difference between avgFromCabinMinutes this month and avgFromCabinMinutes the previous calendar month. Positive means longer average drive than last month. Null if either month has no data.
+             * @example -3
+             */
             diffAvgFromCabinMinutesVsPrevMonth?: number | null;
-            /** @description diffAvgFromCabinMinutesVsPrevMonth formatted as +HH:mm or -HH:mm. Null if either month has no data. */
+            /**
+             * @description diffAvgFromCabinMinutesVsPrevMonth formatted as +HH:mm or -HH:mm. Null if either month has no data.
+             * @example -00:03
+             */
             diffAvgFromCabinVsPrevMonth?: string | null;
         } | null;
         /**
@@ -813,42 +1951,84 @@ export interface components {
          * @description Average departure and arrival clock times for trips in this month, expressed in Oslo timezone. Null if no vehicle trip data exists.
          */
         MonthDrivingMomentStats: {
-            /** @description Month number (1 = January, 12 = December). */
+            /**
+             * @description Month number (1 = January, 12 = December).
+             * @example 7
+             */
             monthNumber: number;
-            /** @description Localised month name (e.g. "Januar"). */
+            /**
+             * @description Localised month name (e.g. "Januar").
+             * @example Juli
+             */
             monthName: string;
-            /** @description The calendar year this month belongs to. */
+            /**
+             * @description The calendar year this month belongs to.
+             * @example 2026
+             */
             year: number;
-            /** @description Average departure time from home (Oslo timezone) across all toCabin trips in this month, expressed as minutes since midnight. */
+            /**
+             * @description Average departure time from home (Oslo timezone) across all toCabin trips in this month, expressed as minutes since midnight.
+             * @example 930
+             */
             avgDepartureHomeMinutes?: number | null;
-            /** @description Average departure time from home formatted as HH:mm (Oslo timezone). Null if no trip data exists. */
+            /**
+             * @description Average departure time from home formatted as HH:mm (Oslo timezone). Null if no trip data exists.
+             * @example 15:30
+             */
             avgDepartureHome?: string | null;
-            /** @description Average arrival time at the cabin (Oslo timezone) across all toCabin trips in this month, expressed as minutes since midnight. */
+            /**
+             * @description Average arrival time at the cabin (Oslo timezone) across all toCabin trips in this month, expressed as minutes since midnight.
+             * @example 1095
+             */
             avgArrivalCabinMinutes?: number | null;
-            /** @description Average arrival time at the cabin formatted as HH:mm (Oslo timezone). Null if no trip data exists. */
+            /**
+             * @description Average arrival time at the cabin formatted as HH:mm (Oslo timezone). Null if no trip data exists.
+             * @example 18:15
+             */
             avgArrivalCabin?: string | null;
-            /** @description Average departure time from the cabin (Oslo timezone) across all fromCabin trips in this month, expressed as minutes since midnight. */
+            /**
+             * @description Average departure time from the cabin (Oslo timezone) across all fromCabin trips in this month, expressed as minutes since midnight.
+             * @example 840
+             */
             avgDepartureCabinMinutes?: number | null;
-            /** @description Average departure time from the cabin formatted as HH:mm (Oslo timezone). Null if no trip data exists. */
+            /**
+             * @description Average departure time from the cabin formatted as HH:mm (Oslo timezone). Null if no trip data exists.
+             * @example 14:00
+             */
             avgDepartureCabin?: string | null;
-            /** @description Average arrival time back home (Oslo timezone) across all fromCabin trips in this month, expressed as minutes since midnight. */
+            /**
+             * @description Average arrival time back home (Oslo timezone) across all fromCabin trips in this month, expressed as minutes since midnight.
+             * @example 1005
+             */
             avgArrivalHomeMinutes?: number | null;
-            /** @description Average arrival time back home formatted as HH:mm (Oslo timezone). Null if no trip data exists. */
+            /**
+             * @description Average arrival time back home formatted as HH:mm (Oslo timezone). Null if no trip data exists.
+             * @example 16:45
+             */
             avgArrivalHome?: string | null;
         } | null;
         /** MonthStats */
         MonthStats: {
-            /** @description The calendar year this month belongs to. */
+            /**
+             * @description The calendar year this month belongs to.
+             * @example 2026
+             */
             year: number;
-            /** @description Month number (1 = January, 12 = December). */
+            /**
+             * @description Month number (1 = January, 12 = December).
+             * @example 7
+             */
             monthNumber: number;
-            /** @description Localised month name (e.g. "Januar"). */
+            /**
+             * @description Localised month name (e.g. "Januar").
+             * @example Juli
+             */
             monthName: string;
             visits: components["schemas"]["MonthVisitsStats"];
             days: components["schemas"]["MonthDaysStats"];
             nights: components["schemas"]["MonthNightsStats"];
             occupancy: components["schemas"]["OccupancyStats"];
-            /** @description All guests present in this month, sorted by total days descending. Visits count reservations that started in this month, days count days within this month. */
+            /** @description All guests present in this month, sorted by total days descending. Basis: the guest's own stay (falls back to the reservation period when the guest has no own dates). Visits count stays that arrive in this month (guest's own arrival date), days count the guest's own days within this month. */
             guests: components["schemas"]["GuestVisitStats"][];
             drivingDistance?: components["schemas"]["MonthDrivingDistanceStats"];
             drivingTime?: components["schemas"]["MonthDrivingTimeStats"];
@@ -856,16 +2036,19 @@ export interface components {
         };
         /** YearStats */
         YearStats: {
-            /** @description The calendar year these statistics cover. */
+            /**
+             * @description The calendar year these statistics cover.
+             * @example 2026
+             */
             year: number;
             visits: components["schemas"]["YearVisitsStats"];
             days: components["schemas"]["YearDaysStats"];
             nights: components["schemas"]["YearNightsStats"];
             occupancy: components["schemas"]["OccupancyStats"];
             topGuestByDays?: components["schemas"]["TopGuestByDays"];
-            /** @description Guests who appear in this year's reservations but did not appear in any reservation in the previous year. Sorted by total days descending. */
+            /** @description Guests who arrive in this year (guest's own arrival date) and had no stay that arrived in the previous year. Sorted by total days descending. */
             newGuests: components["schemas"]["GuestVisitStats"][];
-            /** @description All guests present in this year, sorted by total days descending. Visits count reservations that started in this year, days count days within this year. */
+            /** @description All guests present in this year, sorted by total days descending. Basis: the guest's own stay (falls back to the reservation period when the guest has no own dates). Visits count stays that arrive in this year (guest's own arrival date), days count the guest's own days within this year. */
             guests: components["schemas"]["GuestVisitStats"][];
             drivingDistance?: components["schemas"]["YearDrivingDistanceStats"];
             ev?: components["schemas"]["YearEvStats"];
@@ -876,15 +2059,30 @@ export interface components {
         };
         /** GuestRanking */
         GuestRanking: {
-            /** @description Internal unique identifier of the guest. */
+            /**
+             * @description Internal unique identifier of the guest.
+             * @example ola.nordmann
+             */
             guestId: string;
-            /** @description Guest's first name. */
+            /**
+             * @description Guest's first name.
+             * @example Ola
+             */
             firstName: string;
-            /** @description Guest's last name. */
+            /**
+             * @description Guest's last name.
+             * @example Nordmann
+             */
             lastName: string;
-            /** @description Total number of reservations the guest was part of across all years. */
+            /**
+             * @description Total number of stays of the guest across all years (guest's own stay; one per reservation).
+             * @example 5
+             */
             totalVisits: number;
-            /** @description Total number of days the guest was present at the cabin across all years. */
+            /**
+             * @description Total number of days of the guest's own stay across all years (falls back to the reservation period when the guest has no own dates).
+             * @example 14
+             */
             totalDays: number;
         };
         /**
@@ -892,33 +2090,155 @@ export interface components {
          * @description Gender distribution across all registered guests.
          */
         GenderDistribution: {
-            /** @description Number of male guests among all registered guests. */
+            /**
+             * @description Number of male guests among all registered guests.
+             * @example 15
+             */
             maleCount: number;
-            /** @description Number of female guests among all registered guests. */
+            /**
+             * @description Number of female guests among all registered guests.
+             * @example 14
+             */
             femaleCount: number;
-            /** @description Percentage of male guests (maleCount / total * 100), rounded to one decimal. */
+            /**
+             * @description Percentage of male guests (maleCount / total * 100), rounded to one decimal.
+             * @example 51.7
+             */
             malePercent: number;
-            /** @description Percentage of female guests (femaleCount / total * 100), rounded to one decimal. */
+            /**
+             * @description Percentage of female guests (femaleCount / total * 100), rounded to one decimal.
+             * @example 48.3
+             */
             femalePercent: number;
         };
         /** AgeGroup */
         AgeGroup: {
-            /** @description Age range label (e.g. "0-12", "13-17", "18-30", "31-50", "51+"). */
+            /**
+             * @description Age range label (e.g. "0-12", "13-17", "18-30", "31-50", "51+").
+             * @example 18-30
+             */
             label: string;
-            /** @description Number of registered guests whose current age falls within this range. */
+            /**
+             * @description Number of registered guests whose current age falls within this range.
+             * @example 6
+             */
             guestCount: number;
-            /** @description Percentage of all registered guests in this age group, rounded to one decimal. */
+            /**
+             * @description Percentage of all registered guests in this age group, rounded to one decimal.
+             * @example 20.7
+             */
             percent: number;
         };
         /** AllGuestsStats */
         AllGuestsStats: {
-            /** @description Top 10 guests ranked by total number of reservation visits across all years. */
+            /** @description Top 10 guests ranked by total number of visits across all years. A visit is a stay of the guest, counted with the guest's own stay (falls back to the reservation period when the guest has no own dates). */
             topGuestsByVisits: components["schemas"]["GuestRanking"][];
-            /** @description Top 10 guests ranked by total number of days spent at the cabin across all years. */
+            /** @description Top 10 guests ranked by total number of days spent at the cabin across all years, counted with the guest's own stay (falls back to the reservation period when the guest has no own dates). */
             topGuestsByDays: components["schemas"]["GuestRanking"][];
             genderDistribution: components["schemas"]["GenderDistribution"];
             /** @description Age group breakdown of all registered guests, using current age at time of the request. */
             ageGroups: components["schemas"]["AgeGroup"][];
+        };
+        /** IssueResponse */
+        IssueResponse: {
+            /**
+             * @description Identifier of the issue. Use it in PUT /api/issues/{id}.
+             * @example 42
+             */
+            id: number;
+            /**
+             * @description Stable code of the problem, for example JLR_APPROVAL_REQUIRED, JLR_AUTH_FAILED, JLR_REQUEST_FAILED, PLACE_LOOKUP_FAILED, PLACE_MISSING, FETCH_FAILED, CALENDAR_PUSH_FAILED, CALENDAR_EVENT_LOST, CALENDAR_EVENT_NOT_CREATABLE, CALENDAR_OUTBOX_STUCK, SENSOR_FETCH_FAILED or CHECK_IN_OUT_FAILED. Clients map it to their own texts.
+             * @example PLACE_MISSING
+             * @enum {string}
+             */
+            code: "JLR_APPROVAL_REQUIRED" | "JLR_AUTH_FAILED" | "JLR_REQUEST_FAILED" | "PLACE_LOOKUP_FAILED" | "PLACE_MISSING" | "FETCH_FAILED" | "CALENDAR_PUSH_FAILED" | "CALENDAR_EVENT_LOST" | "CALENDAR_EVENT_NOT_CREATABLE" | "CALENDAR_OUTBOX_STUCK" | "SENSOR_FETCH_FAILED" | "CHECK_IN_OUT_FAILED";
+            /**
+             * @description What the problem is about, unique together with the code: for example PLACE_MISSING:<tripId> or a reservation id. Use it to link to the object.
+             * @example PLACE_MISSING:1767225600000
+             */
+            key: string;
+            /**
+             * @description The severity of the code: WARN or ERROR.
+             * @example WARN
+             * @enum {string}
+             */
+            severity: "WARN" | "ERROR";
+            /**
+             * @description OPEN while the problem is there (or came back), RESOLVED when the code that reported it saw it was gone.
+             * @example OPEN
+             * @enum {string}
+             */
+            status: "OPEN" | "RESOLVED";
+            /**
+             * @description English description of the latest occurrence. Never holds a response body, a URL, a token or a key. The one exception is the JLR device login, which holds the approval link and code.
+             * @example The trip 1767225600000 has no start city
+             */
+            message: string;
+            /**
+             * @description The type of the exception behind the latest occurrence, or null if there was none.
+             * @example JlrRequestException
+             */
+            causeType?: string | null;
+            /**
+             * @description How many times the problem has been reported, since it was first reported.
+             * @example 3
+             */
+            occurrenceCount: number;
+            /**
+             * Format: date-time
+             * @description When the problem was first reported (UTC).
+             * @example 2026-07-10T16:00:00Z
+             */
+            firstOccurredTime: string;
+            /**
+             * Format: date-time
+             * @description When the problem was last reported (UTC).
+             * @example 2026-07-10T18:30:00Z
+             */
+            lastOccurredTime: string;
+            /**
+             * Format: date-time
+             * @description When the problem was resolved (UTC), or null while it is OPEN.
+             * @example 2026-07-11T08:00:00Z
+             */
+            resolvedTime?: string | null;
+            /**
+             * @description True when an admin has marked the issue as read, false when it is unread. Same as readTime being set. It is independent of status: a RESOLVED issue can be unread, but only OPEN unread issues are counted by GET /api/issues/unread-count.
+             * @example true
+             */
+            read: boolean;
+            /**
+             * Format: date-time
+             * @description When an admin marked the issue as read (UTC), or null if it is unread.
+             * @example 2026-07-10T19:00:00Z
+             */
+            readTime?: string | null;
+            /**
+             * @description The version of the issue. Send it back unchanged in PUT /api/issues/{id}, an outdated version gives 412.
+             * @example 2
+             */
+            version: number;
+        };
+        /** UnreadCountResponse */
+        UnreadCountResponse: {
+            /**
+             * @description The number of issues that are not resolved and not read.
+             * @example 2
+             */
+            count: number;
+        };
+        /** IssueUpdate */
+        IssueUpdate: {
+            /**
+             * @description The version of the issue that the client read, from GET /api/issues. An outdated version gives 412.
+             * @example 2
+             */
+            version: number;
+            /**
+             * @description True marks the issue as read, false marks it as unread.
+             * @example true
+             */
+            read: boolean;
         };
     };
     responses: never;
@@ -938,13 +2258,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description The user, with id, name (first and last name together), firstName, lastName, birthYear, gender, email, isFamily and role (ADMIN, FAMILY_USER, GUEST_USER). */
+            /** @description The user, with id, name (first and last name together), firstName, lastName, birthYear, gender, email, isFamily, role (ADMIN, FAMILY_USER, GUEST_USER), avatarUrl (null without an avatar, otherwise it changes when the image does) and version, which an update must send back. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UserPrincipal"];
+                    "application/json": components["schemas"]["MeResponse"];
                 };
             };
             /** @description The Cloudflare Access token is missing or invalid. */
@@ -977,7 +2297,8 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: {
+        /** @description The version the client read and the four profile properties. */
+        requestBody: {
             content: {
                 "application/json": components["schemas"]["MeUpdate"];
             };
@@ -989,16 +2310,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UserPrincipal"];
+                    "application/json": components["schemas"]["MeResponse"];
                 };
             };
-            /** @description The body is not valid JSON, a property is missing or a property has an invalid value. */
+            /** @description The body is not valid JSON, a property or the version is missing or a property has an invalid value. */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": string;
+                    "application/json": components["schemas"]["ApiError"];
                 };
             };
             /** @description The Cloudflare Access token is missing or invalid. */
@@ -1020,7 +2341,36 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description The guest has changed since the version in the body. */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description The request body is larger than 64 KB. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description The Content-Type is not application/json. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
             };
             /** @description Cloudflare Access is not configured for the application. */
             503: {
@@ -1036,7 +2386,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Internal unique identifier of the guest. */
+                /**
+                 * @description Internal unique identifier of the guest.
+                 * @example ola.nordmann
+                 */
                 guestId: string;
             };
             cookie?: never;
@@ -1049,6 +2402,8 @@ export interface operations {
                     ETag?: {
                         "text/plain": unknown;
                     };
+                    /** @description Always nosniff: the browser must treat the bytes as image/jpeg and never guess another type, so an uploaded file can never be run as a script or page. */
+                    "X-Content-Type-Options"?: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -1061,21 +2416,12 @@ export interface operations {
                     ETag?: {
                         "text/plain": unknown;
                     };
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description The guestId path parameter is missing. */
-            400: {
-                headers: {
-                    ETag?: {
+                    "X-Content-Type-Options"?: {
                         "text/plain": unknown;
                     };
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": string;
-                };
+                content?: never;
             };
             /** @description The Cloudflare Access token or the API key is missing or invalid. */
             401: {
@@ -1097,9 +2443,292 @@ export interface operations {
                     ETag?: {
                         "text/plain": unknown;
                     };
+                    "X-Content-Type-Options"?: {
+                        "text/plain": unknown;
+                    };
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Cloudflare Access is not configured for the application. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    uploadGuestAvatar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Internal unique identifier of the guest.
+                 * @example ola.nordmann
+                 */
+                guestId: string;
+            };
+            cookie?: never;
+        };
+        /** @description The raw JPEG bytes of the avatar, not JSON and not multipart. */
+        requestBody: {
+            content: {
+                "image/jpeg": string;
+            };
+        };
+        responses: {
+            /** @description The avatar is stored. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The body is not a valid JPEG (INVALID_IMAGE). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description The Cloudflare Access token is missing or invalid. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The caller is not allowed to upload this avatar. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The guest does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description The image is larger than 4 MB. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description The Content-Type is not image/jpeg. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Cloudflare Access is not configured for the application. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    uploadMyAvatar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The raw JPEG bytes of the avatar, not JSON and not multipart. */
+        requestBody: {
+            content: {
+                "image/jpeg": string;
+            };
+        };
+        responses: {
+            /** @description The avatar is stored. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The body is not a valid JPEG (INVALID_IMAGE). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description The Cloudflare Access token is missing or invalid. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The caller is not allowed to upload this avatar. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The image is larger than 4 MB. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description The Content-Type is not image/jpeg. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Cloudflare Access is not configured for the application. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listGuests: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The guests, sorted by first name. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GuestResponse"][];
+                };
+            };
+            /** @description The Cloudflare Access token is missing or invalid. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The caller is not an admin or a family user. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Cloudflare Access is not configured for the application. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    createGuest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The guest to create. */
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GuestCreate"];
+            };
+        };
+        responses: {
+            /** @description The created guest, with its generated id and version. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GuestResponse"];
+                };
+            };
+            /** @description The body is not valid JSON or a property is missing or invalid. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description The Cloudflare Access token is missing or invalid. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The caller is not an admin, or has no role in the application. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The email is already used by another guest (EMAIL_IN_USE). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description The request body is larger than 64 KB. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description The Content-Type is not application/json. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
             };
             /** @description Cloudflare Access is not configured for the application. */
             503: {
@@ -1115,33 +2744,37 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Internal unique identifier of the guest. */
+                /**
+                 * @description Internal unique identifier of the guest.
+                 * @example ola.nordmann
+                 */
                 guestId: string;
             };
             cookie?: never;
         };
-        requestBody?: {
+        /** @description The version the client read and every writable property. */
+        requestBody: {
             content: {
                 "application/json": components["schemas"]["GuestUpdate"];
             };
         };
         responses: {
-            /** @description The updated guest. */
+            /** @description The updated guest. An update that changes nothing keeps the version. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Guest"];
+                    "application/json": components["schemas"]["GuestResponse"];
                 };
             };
-            /** @description The body is not valid JSON or a property has an invalid value. */
+            /** @description The body is not valid JSON, the version or a property is missing, or a value is invalid. */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": string;
+                    "application/json": components["schemas"]["ApiError"];
                 };
             };
             /** @description The Cloudflare Access token is missing or invalid. */
@@ -1157,7 +2790,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": string;
+                    "application/json": components["schemas"]["ApiError"];
                 };
             };
             /** @description The guest does not exist. */
@@ -1165,15 +2798,44 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
             };
-            /** @description The email is already used by another user. */
+            /** @description The email is already used by another user, or the last admin would be removed. */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": string;
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description The guest has changed since the version in the body. */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description The request body is larger than 64 KB. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description The Content-Type is not application/json. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
                 };
             };
             /** @description Cloudflare Access is not configured for the application. */
@@ -1182,6 +2844,413 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    listReservations: {
+        parameters: {
+            query?: {
+                /**
+                 * @description First day of the window (inclusive), a UTC date yyyy-MM-dd. Omit for no lower limit.
+                 * @example 2026-07-01
+                 */
+                from?: string;
+                /**
+                 * @description Day after the last day of the window (exclusive), a UTC date yyyy-MM-dd. Must be after from. Omit for no upper limit.
+                 * @example 2026-08-01
+                 */
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The reservations in the window, sorted by start time. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReservationResponse"][];
+                };
+            };
+            /** @description from or to is not a date (yyyy-MM-dd), or to is not after from. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description The Cloudflare Access token or the API key is missing or invalid. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The caller has no role in the application. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Cloudflare Access is not configured for the application. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    createReservation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The reservation to create. */
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReservationCreate"];
+            };
+        };
+        responses: {
+            /** @description The created reservation, with its generated id and version. The Location header is its URL. */
+            201: {
+                headers: {
+                    Location?: {
+                        "text/plain": unknown;
+                    };
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReservationResponse"];
+                };
+            };
+            /** @description The body is not valid JSON or a property is missing, or a rule is broken: END_BEFORE_START, TOO_LONG, TOO_FAR_AHEAD, NO_GUESTS, TOO_MANY_GUESTS, DUPLICATE_GUEST, UNKNOWN_GUEST or INVALID_STAY (a guest's own stay is outside the reservation or ends before it starts). */
+            400: {
+                headers: {
+                    Location?: {
+                        "text/plain": unknown;
+                    };
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description The Cloudflare Access token is missing or invalid. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The caller is not an admin or family user, or has no role. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The times overlap another reservation (OVERLAP). */
+            409: {
+                headers: {
+                    Location?: {
+                        "text/plain": unknown;
+                    };
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description The request body is larger than 64 KB. */
+            413: {
+                headers: {
+                    Location?: {
+                        "text/plain": unknown;
+                    };
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description The Content-Type is not application/json. */
+            415: {
+                headers: {
+                    Location?: {
+                        "text/plain": unknown;
+                    };
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description The database is busy, too many calendar updates are waiting (TEMPORARILY_UNAVAILABLE), or Cloudflare Access is not configured for the application. */
+            503: {
+                headers: {
+                    Location?: {
+                        "text/plain": unknown;
+                    };
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getReservation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Unique identifier of the reservation. Old reservations can have an id that starts with an underscore.
+                 * @example a3f9c2e17b4d4e5f8a1b2c3d4e5f6a7b
+                 */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The reservation. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReservationResponse"];
+                };
+            };
+            /** @description The Cloudflare Access token or the API key is missing or invalid. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The caller has no role in the application. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The reservation does not exist, or the caller is a guest user who is not a guest of it. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Cloudflare Access is not configured for the application. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    updateReservation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Unique identifier of the reservation. Old reservations can have an id that starts with an underscore.
+                 * @example a3f9c2e17b4d4e5f8a1b2c3d4e5f6a7b
+                 */
+                id: string;
+            };
+            cookie?: never;
+        };
+        /** @description The new times and guests, with the version the client read. */
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReservationUpdate"];
+            };
+        };
+        responses: {
+            /** @description The updated reservation, with its new version. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReservationResponse"];
+                };
+            };
+            /** @description The body is not valid JSON or a property is missing, or a rule is broken: END_BEFORE_START, TOO_LONG, TOO_FAR_AHEAD, NO_GUESTS, TOO_MANY_GUESTS, DUPLICATE_GUEST, UNKNOWN_GUEST or INVALID_STAY (a guest's own stay is outside the reservation or ends before it starts). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description The Cloudflare Access token is missing or invalid. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The caller is not an admin or family user, or has no role. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The reservation does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description The times overlap another reservation (OVERLAP). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description The reservation has changed since the version in the body (VERSION_MISMATCH). */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description The request body is larger than 64 KB. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description The Content-Type is not application/json. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description The database is busy, too many calendar updates are waiting (TEMPORARILY_UNAVAILABLE), or Cloudflare Access is not configured for the application. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    deleteReservation: {
+        parameters: {
+            query: {
+                /**
+                 * @description The version of the reservation that the client read.
+                 * @example 3
+                 */
+                version: number;
+            };
+            header?: never;
+            path: {
+                /**
+                 * @description Unique identifier of the reservation. Old reservations can have an id that starts with an underscore.
+                 * @example a3f9c2e17b4d4e5f8a1b2c3d4e5f6a7b
+                 */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The reservation is deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description version is missing or not a number. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description The Cloudflare Access token is missing or invalid. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The caller is not an admin or family user, or has no role. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The reservation does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description The reservation has changed since the version in the query (VERSION_MISMATCH). */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description The database is busy, too many calendar updates are waiting, or Cloudflare Access is not configured for the application. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
             };
         };
     };
@@ -1217,7 +3286,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Internal unique identifier of the guest. */
+                /**
+                 * @description Internal unique identifier of the guest.
+                 * @example ola.nordmann
+                 */
                 guestId: string;
             };
             cookie?: never;
@@ -1231,15 +3303,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GuestProfileStats"];
-                };
-            };
-            /** @description The guestId path parameter is missing. */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": string;
                 };
             };
             /** @description There is no guest with the given id. */
@@ -1312,7 +3375,10 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description The calendar year, for example 2025. */
+                /**
+                 * @description The calendar year, for example 2025.
+                 * @example 2026
+                 */
                 year: number;
             };
             cookie?: never;
@@ -1344,9 +3410,15 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description The calendar year, for example 2025. */
+                /**
+                 * @description The calendar year, for example 2025.
+                 * @example 2026
+                 */
                 year: number;
-                /** @description The month number, 1 (January) to 12 (December). */
+                /**
+                 * @description The month number, 1 (January) to 12 (December).
+                 * @example 7
+                 */
                 month: number;
             };
             cookie?: never;
@@ -1393,6 +3465,210 @@ export interface operations {
             };
             /** @description Unexpected server error. */
             default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listIssues: {
+        parameters: {
+            query?: {
+                /**
+                 * @description true for read issues only, false for unread issues only. Omit for both.
+                 * @example false
+                 */
+                read?: boolean;
+                /**
+                 * @description OPEN or RESOLVED. Omit for both.
+                 * @example OPEN
+                 */
+                status?: string;
+                /**
+                 * @description The most issues to return, from 1 to 500. Default 100.
+                 * @example 100
+                 */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The issues that match the filters, as a plain list. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IssueResponse"][];
+                };
+            };
+            /** @description read, status or limit is not valid. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description The Cloudflare Access token is missing or invalid. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The caller is not an admin, or is the service user. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Cloudflare Access is not configured for the application. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    countUnreadIssues: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The number of unread issues that are not resolved. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnreadCountResponse"];
+                };
+            };
+            /** @description The Cloudflare Access token is missing or invalid. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The caller is not an admin, or is the service user. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Cloudflare Access is not configured for the application. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    updateIssue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Identifier of the issue, from GET /api/issues.
+                 * @example 42
+                 */
+                id: number;
+            };
+            cookie?: never;
+        };
+        /** @description The version the client read and the wanted read state. */
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IssueUpdate"];
+            };
+        };
+        responses: {
+            /** @description The updated issue. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IssueResponse"];
+                };
+            };
+            /** @description The body is not valid JSON, or the version or read is missing. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description The Cloudflare Access token is missing or invalid. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The caller is not an admin, or is the service user. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The issue does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description The issue has changed since the version in the body. */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description The request body is larger than 64 KB. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description The Content-Type is not application/json. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Cloudflare Access is not configured for the application. */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };
