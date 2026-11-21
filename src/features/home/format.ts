@@ -45,3 +45,15 @@ export function nextStatusText(daysUntil: number): string {
 export function formatKm(km: number | null | undefined): string {
   return String(Math.round(km ?? 0)).replace(/\B(?=(\d{3})+(?!\d))/g, '\u202f')
 }
+
+/** Today as yyyy-MM-dd in local time, the format of the API's stay dates. */
+export function toIsoDate(date: Date): string {
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${date.getFullYear()}-${month}-${day}`
+}
+
+/** Whether a guest's own stay includes `todayIso` (the check-out day counts). */
+export function isAtCabin(stay: { stayStartDate: string; stayEndDate: string }, todayIso: string) {
+  return stay.stayStartDate <= todayIso && todayIso <= stay.stayEndDate
+}

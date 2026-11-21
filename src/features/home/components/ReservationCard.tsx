@@ -1,7 +1,7 @@
 import { List, ListItem } from 'framework7-react'
 import AvatarStack from '@/features/home/components/AvatarStack.tsx'
 import type { ReservationGuest } from '@/features/home/api/stats-api.ts'
-import { formatDateRange } from '@/features/home/format.ts'
+import { formatDateRange, toIsoDate } from '@/features/home/format.ts'
 import './ReservationCard.css'
 
 interface ReservationCardProps {
@@ -15,6 +15,12 @@ interface ReservationCardProps {
   statusText: string
   /** Number of the reservation among those that started in the same year, from 1. */
   order: number
+}
+
+// Guests of the current reservation are dimmed when they are not at the cabin today; the next
+// reservation has not started, so none of its guests is.
+function dimDate(kind: ReservationCardProps['kind']): string | undefined {
+  return kind === 'current' ? toIsoDate(new Date()) : undefined
 }
 
 // One reservation: titled with its state, dates, colored status line and the guests' photos.
@@ -39,7 +45,7 @@ export default function ReservationCard({
           {statusText}
         </span>
         <span slot="after">
-          <AvatarStack guests={guests} />
+          <AvatarStack guests={guests} today={dimDate(kind)} />
         </span>
       </ListItem>
     </List>

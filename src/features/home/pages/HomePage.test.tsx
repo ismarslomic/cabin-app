@@ -2,7 +2,7 @@ import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { f7 } from 'framework7-react'
 import { StrictMode } from 'react'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import App from '@/app/App.tsx'
 import type {
   CurrentYearStats,
@@ -131,7 +131,13 @@ describe('HomePage', () => {
     expect(button.closest('.empty-reservations')).not.toBeNull()
   })
 
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   it('shows the current reservation with a tonal reserve button', async () => {
+    // Only Date is faked: the guests' stays (2026-11-01 to 2026-11-03) include this day.
+    vi.useFakeTimers({ toFake: ['Date'], now: new Date(2026, 10, 2) })
     stubApi({ isOccupied: true, currentReservation: current })
     renderApp()
     await loaded()
