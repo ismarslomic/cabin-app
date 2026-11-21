@@ -44,7 +44,7 @@ describe('appFetch', () => {
 describe('reloadForLogin', () => {
   it('reloads the page', () => {
     const reload = vi.fn()
-    vi.stubGlobal('location', { ...window.location, reload })
+    vi.stubGlobal('location', { reload })
 
     reloadForLogin()
 
