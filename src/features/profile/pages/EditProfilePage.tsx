@@ -16,7 +16,7 @@ import { fetchProfile, ProfileApiError, updateProfile } from '@/features/profile
 import { setProfile, useProfile } from '@/features/profile/api/profile-store.ts'
 import type { Gender, Profile } from '@/features/profile/api/types.ts'
 import { genderLabels, MIN_BIRTH_YEAR, parseBirthYear } from '@/features/profile/labels.ts'
-import { SessionExpiredError } from '@/shared/lib/http.ts'
+import { reloadForLogin, SessionExpiredError } from '@/shared/lib/http.ts'
 
 const CURRENT_YEAR = new Date().getFullYear()
 
@@ -48,7 +48,11 @@ function EditScreen({ profile, f7router }: { profile: Profile; f7router: Router.
       setBirthYear(String(latest.birthYear))
       setGender(latest.gender)
       setError(message)
-    } catch {
+    } catch (e) {
+      if (e instanceof SessionExpiredError) {
+        reloadForLogin()
+        return
+      }
       setError('Kunne ikke hente nyeste profil. Prøv igjen senere.')
     }
     setSaving(false)
@@ -70,14 +74,12 @@ function EditScreen({ profile, f7router }: { profile: Profile; f7router: Router.
         await resetToLatest(e.message)
         return
       }
+      if (e instanceof SessionExpiredError) {
+        reloadForLogin()
+        return
+      }
       if (e instanceof ProfileApiError && e.status === 403) f7.dialog.alert(e.message)
-      setError(
-        e instanceof SessionExpiredError
-          ? 'Økten din har utløpt. Last inn appen på nytt for å logge inn igjen.'
-          : e instanceof ProfileApiError
-            ? e.message
-            : 'Kunne ikke lagre profilen.',
-      )
+      setError(e instanceof ProfileApiError ? e.message : 'Kunne ikke lagre profilen.')
       setSaving(false)
     }
   }

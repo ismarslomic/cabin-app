@@ -1,19 +1,23 @@
 import { useCallback, useEffect, useState } from 'react'
 import { fetchCurrentYearStats, fetchLiveStats } from '@/features/home/api/stats-api.ts'
 import type { CurrentYearStats, LiveStats } from '@/features/home/api/stats-api.ts'
-import { SessionExpiredError } from '@/shared/lib/http.ts'
+import { reloadForLogin, SessionExpiredError } from '@/shared/lib/http.ts'
 
 export type HomeStatsState =
   | { status: 'loading' }
   | { status: 'ready'; live: LiveStats; year: CurrentYearStats }
-  | { status: 'expired' | 'error' }
+  | { status: 'error' }
 
 async function load(): Promise<HomeStatsState> {
   try {
     const [live, year] = await Promise.all([fetchLiveStats(), fetchCurrentYearStats()])
     return { status: 'ready', live, year }
   } catch (error: unknown) {
-    return { status: error instanceof SessionExpiredError ? 'expired' : 'error' }
+    if (error instanceof SessionExpiredError) {
+      reloadForLogin()
+      return { status: 'loading' }
+    }
+    return { status: 'error' }
   }
 }
 

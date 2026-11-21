@@ -40,13 +40,6 @@ export default function ProfilePage() {
           <Preloader />
         </Block>
       )}
-      {status === 'expired' && (
-        <div role="alert">
-          <Block className="text-align-center">
-            Økten din har utløpt. Last inn appen på nytt for å logge inn igjen.
-          </Block>
-        </div>
-      )}
       {status === 'error' && (
         <div role="alert">
           <Block className="text-align-center">

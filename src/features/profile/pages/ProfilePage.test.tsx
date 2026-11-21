@@ -6,6 +6,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from '@/app/App.tsx'
 import { resetProfileStore } from '@/features/profile/api/profile-store.ts'
 import type { Profile } from '@/features/profile/api/types.ts'
+import { reloadForLogin } from '@/shared/lib/http.ts'
+
+vi.mock('@/shared/lib/http.ts', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/shared/lib/http.ts')>()),
+  reloadForLogin: vi.fn(),
+}))
 
 const profile: Profile = {
   id: 'g1',
@@ -64,6 +70,7 @@ const openProfile = async () => {
 
 describe('profile', () => {
   beforeEach(() => {
+    vi.mocked(reloadForLogin).mockClear()
     resetProfileStore()
   })
   afterEach(() => {
@@ -84,12 +91,15 @@ describe('profile', () => {
     expect(within(list).getAllByText('Familie')).toHaveLength(2)
   })
 
-  it('says so when the session has expired', async () => {
+  it('reloads the page to sign in again when the session has expired', async () => {
     stubApi({ me: () => new Response(null, { status: 401 }) })
 
     await openProfile()
 
-    expect(await screen.findByText(/Økten din har utløpt/)).toBeInTheDocument()
+    await vi.waitFor(() => {
+      expect(reloadForLogin).toHaveBeenCalled()
+    })
+    expect(screen.queryByText(/Økten din/)).not.toBeInTheDocument()
   })
 
   it('lets the user try again after an error', async () => {
@@ -196,5 +206,24 @@ describe('profile', () => {
     await user.click(screen.getByRole('link', { name: 'Lagre' }))
 
     expect(await screen.findByText('Kunne ikke lagre profilen.')).toBeInTheDocument()
+  })
+
+  it('reloads the page when the session expires while saving', async () => {
+    const fetchMock = stubApi()
+    const user = await openProfile()
+
+    await openEditPage(user)
+    fetchMock.mockImplementation((_input: RequestInfo | URL, init?: RequestInit) =>
+      Promise.resolve(
+        init?.method === 'PUT' ? new Response(null, { status: 401 }) : Response.json(profile),
+      ),
+    )
+    await user.type(screen.getByDisplayValue('Kari'), 'x')
+    await user.click(screen.getByRole('link', { name: 'Lagre' }))
+
+    await vi.waitFor(() => {
+      expect(reloadForLogin).toHaveBeenCalled()
+    })
+    expect(screen.queryByText(/Økten din/)).not.toBeInTheDocument()
   })
 })

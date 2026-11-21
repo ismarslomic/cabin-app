@@ -37,13 +37,6 @@ export default function HomePage() {
       </Navbar>
       <HomeHero hero={hero} />
       {state.status === 'loading' && <HomeSkeleton />}
-      {state.status === 'expired' && (
-        <div role="alert">
-          <Block className="text-align-center">
-            Økten din har utløpt. Last inn appen på nytt for å logge inn igjen.
-          </Block>
-        </div>
-      )}
       {state.status === 'error' && (
         <div role="alert">
           <Block className="text-align-center">

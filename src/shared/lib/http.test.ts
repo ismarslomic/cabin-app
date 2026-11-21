@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { appFetch, SessionExpiredError } from '@/shared/lib/http.ts'
+import { appFetch, reloadForLogin, SessionExpiredError } from '@/shared/lib/http.ts'
 
 const fetchMock = vi.fn()
 
@@ -38,5 +38,17 @@ describe('appFetch', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     expect((await appFetch('/api/x')).status).toBe(500)
+  })
+})
+
+describe('reloadForLogin', () => {
+  it('reloads the page', () => {
+    const reload = vi.fn()
+    vi.stubGlobal('location', { ...window.location, reload })
+
+    reloadForLogin()
+
+    expect(reload).toHaveBeenCalledOnce()
+    vi.unstubAllGlobals()
   })
 })

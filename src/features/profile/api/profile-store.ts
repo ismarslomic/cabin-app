@@ -1,12 +1,12 @@
 import { useEffect, useState, useSyncExternalStore } from 'react'
 import { fetchAvatarUrl, fetchProfile } from '@/features/profile/api/profile-api.ts'
 import type { Profile } from '@/features/profile/api/types.ts'
-import { SessionExpiredError } from '@/shared/lib/http.ts'
+import { reloadForLogin, SessionExpiredError } from '@/shared/lib/http.ts'
 
 export type ProfileState =
   | { status: 'loading'; profile?: Profile }
   | { status: 'ready'; profile: Profile }
-  | { status: 'expired' | 'error'; profile?: Profile }
+  | { status: 'error'; profile?: Profile }
 
 // One shared copy of the profile: the avatar in every page's navbar and the profile page use it.
 let state: ProfileState = { status: 'loading' }
@@ -28,8 +28,11 @@ export function loadProfile(): Promise<void> {
       setState({ status: 'ready', profile })
     })
     .catch((error: unknown) => {
-      const status = error instanceof SessionExpiredError ? 'expired' : 'error'
-      setState({ status, profile: state.profile })
+      if (error instanceof SessionExpiredError) {
+        reloadForLogin()
+        return
+      }
+      setState({ status: 'error', profile: state.profile })
     })
     .finally(() => {
       inflight = undefined

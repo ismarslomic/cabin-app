@@ -9,6 +9,12 @@ import type {
   LiveStats,
   ReservationGuest,
 } from '@/features/home/api/stats-api.ts'
+import { reloadForLogin } from '@/shared/lib/http.ts'
+
+vi.mock('@/shared/lib/http.ts', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/shared/lib/http.ts')>()),
+  reloadForLogin: vi.fn(),
+}))
 
 const guest = (id: string, firstName: string) =>
   ({
@@ -218,11 +224,14 @@ describe('HomePage', () => {
     expect(await screen.findByText('Ingen planlagte besøk')).toBeInTheDocument()
   })
 
-  it('tells the user when the session has expired', async () => {
+  it('reloads the page to sign in again when the session has expired', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 401 })))
     renderApp()
 
-    expect(await screen.findByText(/Økten din har utløpt/)).toBeInTheDocument()
+    await waitFor(() => {
+      expect(reloadForLogin).toHaveBeenCalled()
+    })
+    expect(screen.queryByText(/Økten din/)).not.toBeInTheDocument()
   })
 
   it('has a decorative photo hero behind the title', async () => {
