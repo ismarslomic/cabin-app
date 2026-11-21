@@ -7,6 +7,14 @@ export class SessionExpiredError extends Error {
 }
 
 /**
+ * Reloads the page after a `SessionExpiredError`: Cloudflare Access then shows its login and
+ * brings the user back to the app. Shows no message, as the login itself explains the situation.
+ */
+export function reloadForLogin(): void {
+  window.location.reload()
+}
+
+/**
  * The only way the app makes HTTP requests. The app sits behind Cloudflare Access, which redirects
  * a request with an expired session to its login page; the browser reports that as an opaque CORS
  * or CSP error. With `X-Requested-With: XMLHttpRequest` Access answers `401` instead, which this

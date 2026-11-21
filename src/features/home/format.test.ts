@@ -3,7 +3,9 @@ import {
   currentStatusText,
   formatDateRange,
   formatKm,
+  isAtCabin,
   nextStatusText,
+  toIsoDate,
 } from '@/features/home/format.ts'
 
 const today = new Date(2026, 9, 31)
@@ -42,5 +44,24 @@ describe('formatKm', () => {
   it('shows 0 when there is no distance', () => {
     expect(formatKm(null)).toBe('0')
     expect(formatKm(undefined)).toBe('0')
+  })
+})
+
+describe('toIsoDate', () => {
+  it('writes local year, month and day with leading zeros', () => {
+    expect(toIsoDate(new Date(2026, 0, 5))).toBe('2026-01-05')
+  })
+})
+
+describe('isAtCabin', () => {
+  const stay = { stayStartDate: '2026-11-10', stayEndDate: '2026-11-12' }
+
+  it.each([
+    ['2026-11-09', false],
+    ['2026-11-10', true],
+    ['2026-11-12', true],
+    ['2026-11-13', false],
+  ])('on %s gives %s', (day, expected) => {
+    expect(isAtCabin(stay, day)).toBe(expected)
   })
 })

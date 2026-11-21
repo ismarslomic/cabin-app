@@ -3,7 +3,7 @@ import { appFetch } from '@/shared/lib/http.ts'
 
 export type LiveStats = components['schemas']['LiveStats']
 export type CurrentYearStats = components['schemas']['CurrentYearStats']
-export type ReservationGuest = components['schemas']['GuestStats']
+export type ReservationGuest = components['schemas']['LiveGuestStats']
 
 export class StatsApiError extends Error {
   readonly status: number

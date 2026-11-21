@@ -1,12 +1,22 @@
 import type { Router } from 'framework7/types'
 import { Check } from 'lucide-react'
-import { Block, Link, List, ListInput, Navbar, NavRight, Page, Preloader } from 'framework7-react'
+import {
+  Block,
+  f7,
+  Link,
+  List,
+  ListInput,
+  Navbar,
+  NavRight,
+  Page,
+  Preloader,
+} from 'framework7-react'
 import { useState } from 'react'
-import { ProfileApiError, updateProfile } from '@/features/profile/api/profile-api.ts'
-import { loadProfile, useProfile } from '@/features/profile/api/profile-store.ts'
+import { fetchProfile, ProfileApiError, updateProfile } from '@/features/profile/api/profile-api.ts'
+import { setProfile, useProfile } from '@/features/profile/api/profile-store.ts'
 import type { Gender, Profile } from '@/features/profile/api/types.ts'
 import { genderLabels, MIN_BIRTH_YEAR, parseBirthYear } from '@/features/profile/labels.ts'
-import { SessionExpiredError } from '@/shared/lib/http.ts'
+import { reloadForLogin, SessionExpiredError } from '@/shared/lib/http.ts'
 
 const CURRENT_YEAR = new Date().getFullYear()
 
@@ -28,27 +38,48 @@ function EditScreen({ profile, f7router }: { profile: Profile; f7router: Router.
     gender !== profile.gender
   const canSave = valid && changed && !saving
 
+  // The profile changed elsewhere: fetch the latest and reset the form to it.
+  const resetToLatest = async (message: string) => {
+    try {
+      const latest = await fetchProfile()
+      setProfile(latest)
+      setFirstName(latest.firstName)
+      setLastName(latest.lastName)
+      setBirthYear(String(latest.birthYear))
+      setGender(latest.gender)
+      setError(message)
+    } catch (e) {
+      if (e instanceof SessionExpiredError) {
+        reloadForLogin()
+        return
+      }
+      setError('Kunne ikke hente nyeste profil. Prøv igjen senere.')
+    }
+    setSaving(false)
+  }
+
   const save = async () => {
     if (!canSave) return
     setSaving(true)
     setError(undefined)
     try {
-      await updateProfile({
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        birthYear: year,
-        gender,
-      })
-      await loadProfile()
+      const saved = await updateProfile(
+        { firstName: firstName.trim(), lastName: lastName.trim(), birthYear: year, gender },
+        profile.version,
+      )
+      setProfile(saved)
       f7router.back()
     } catch (e) {
-      setError(
-        e instanceof SessionExpiredError
-          ? 'Økten din har utløpt. Last inn appen på nytt for å logge inn igjen.'
-          : e instanceof ProfileApiError
-            ? e.message
-            : 'Kunne ikke lagre profilen.',
-      )
+      if (e instanceof ProfileApiError && e.status === 412) {
+        await resetToLatest(e.message)
+        return
+      }
+      if (e instanceof SessionExpiredError) {
+        reloadForLogin()
+        return
+      }
+      if (e instanceof ProfileApiError && e.status === 403) f7.dialog.alert(e.message)
+      setError(e instanceof ProfileApiError ? e.message : 'Kunne ikke lagre profilen.')
       setSaving(false)
     }
   }

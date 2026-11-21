@@ -22,3 +22,8 @@
   font-size: 12px;
   font-weight: 600;
 }
+
+/* A guest of the current reservation who has not arrived yet or has already left. */
+.avatar-stack-absent {
+  opacity: 0.4;
+}

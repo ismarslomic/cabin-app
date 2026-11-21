@@ -2,15 +2,27 @@ import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { f7 } from 'framework7-react'
 import { StrictMode } from 'react'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import App from '@/app/App.tsx'
 import type {
   CurrentYearStats,
   LiveStats,
   ReservationGuest,
 } from '@/features/home/api/stats-api.ts'
+import { reloadForLogin } from '@/shared/lib/http.ts'
 
-const guest = (id: string, firstName: string) => ({ guestId: id, firstName }) as ReservationGuest
+vi.mock('@/shared/lib/http.ts', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/shared/lib/http.ts')>()),
+  reloadForLogin: vi.fn(),
+}))
+
+const guest = (id: string, firstName: string) =>
+  ({
+    guestId: id,
+    firstName,
+    stayStartDate: '2026-11-01',
+    stayEndDate: '2026-11-03',
+  }) as ReservationGuest
 
 const year: CurrentYearStats = { year: 2026, visits: 8, totalNights: 32, totalDistanceKm: 1240 }
 
@@ -125,7 +137,13 @@ describe('HomePage', () => {
     expect(button.closest('.empty-reservations')).not.toBeNull()
   })
 
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   it('shows the current reservation with a tonal reserve button', async () => {
+    // Only Date is faked: the guests' stays (2026-11-01 to 2026-11-03) include this day.
+    vi.useFakeTimers({ toFake: ['Date'], now: new Date(2026, 10, 2) })
     stubApi({ isOccupied: true, currentReservation: current })
     renderApp()
     await loaded()
@@ -206,11 +224,14 @@ describe('HomePage', () => {
     expect(await screen.findByText('Ingen planlagte besøk')).toBeInTheDocument()
   })
 
-  it('tells the user when the session has expired', async () => {
+  it('reloads the page to sign in again when the session has expired', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 401 })))
     renderApp()
 
-    expect(await screen.findByText(/Økten din har utløpt/)).toBeInTheDocument()
+    await waitFor(() => {
+      expect(reloadForLogin).toHaveBeenCalled()
+    })
+    expect(screen.queryByText(/Økten din/)).not.toBeInTheDocument()
   })
 
   it('has a decorative photo hero behind the title', async () => {

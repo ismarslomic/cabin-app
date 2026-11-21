@@ -29,8 +29,8 @@ describe('profile api', () => {
     await expect(fetchProfile()).rejects.toBeInstanceOf(SessionExpiredError)
   })
 
-  it('posts the update as JSON', async () => {
-    fetchMock.mockResolvedValue(Response.json({}))
+  it('puts the update with the version and returns the saved profile', async () => {
+    fetchMock.mockResolvedValue(Response.json({ id: 'g1', firstName: 'Kari', version: 4 }))
     vi.stubGlobal('fetch', fetchMock)
     const update = {
       firstName: 'Kari',
@@ -39,24 +39,34 @@ describe('profile api', () => {
       gender: 'FEMALE' as const,
     }
 
-    await updateProfile(update)
+    await expect(updateProfile(update, 3)).resolves.toMatchObject({ id: 'g1', version: 4 })
 
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
     expect(url).toBe('/api/me')
-    expect(init.method).toBe('POST')
-    expect(JSON.parse(init.body as string)).toEqual(update)
+    expect(init.method).toBe('PUT')
+    expect(JSON.parse(init.body as string)).toEqual({ ...update, version: 3 })
   })
 
+  const conflict =
+    'Profilen ble endret et annet sted. Vi har hentet nyeste versjon, sjekk og lagre på nytt.'
   it.each([
-    [400, 'Ugyldig verdi. Sjekk feltene og prøv igjen.'],
-    [403, 'Du har ikke tilgang til appen.'],
-    [500, 'Kunne ikke lagre profilen.'],
-  ])('explains a %s on update in Norwegian', async (status, message) => {
-    fetchMock.mockResolvedValue(new Response(null, { status }))
+    [400, undefined, 'Ugyldig verdi. Sjekk feltene og prøv igjen.'],
+    [400, 'INVALID_REQUEST', 'Ugyldig verdi. Sjekk feltene og prøv igjen.'],
+    [403, undefined, 'Du har ikke tilgang til appen.'],
+    [412, 'VERSION_MISMATCH', conflict],
+    [412, undefined, conflict],
+    [413, 'BODY_TOO_LARGE', 'Kunne ikke lagre profilen.'],
+    [500, undefined, 'Kunne ikke lagre profilen.'],
+  ])('explains a %s (%s) on update in Norwegian', async (status, code, message) => {
+    fetchMock.mockResolvedValue(
+      code
+        ? Response.json({ code, message: 'English' }, { status })
+        : new Response(null, { status }),
+    )
     vi.stubGlobal('fetch', fetchMock)
 
     await expect(
-      updateProfile({ firstName: 'a', lastName: 'b', birthYear: 1990, gender: 'MALE' }),
+      updateProfile({ firstName: 'a', lastName: 'b', birthYear: 1990, gender: 'MALE' }, 1),
     ).rejects.toEqual(new ProfileApiError(message, status))
   })
 

@@ -6,6 +6,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from '@/app/App.tsx'
 import { resetProfileStore } from '@/features/profile/api/profile-store.ts'
 import type { Profile } from '@/features/profile/api/types.ts'
+import { reloadForLogin } from '@/shared/lib/http.ts'
+
+vi.mock('@/shared/lib/http.ts', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/shared/lib/http.ts')>()),
+  reloadForLogin: vi.fn(),
+}))
 
 const profile: Profile = {
   id: 'g1',
@@ -17,15 +23,19 @@ const profile: Profile = {
   gender: 'FEMALE',
   isFamily: true,
   role: 'FAMILY_USER',
+  version: 3,
+  avatarUrl: null,
 }
 
 /** Answers the API calls of the app; `posts` collects the update bodies. */
-function stubApi(options: { me?: () => Response; posts?: unknown[]; update?: Response } = {}) {
+function stubApi(
+  options: { me?: () => Response; posts?: unknown[]; update?: () => Response } = {},
+) {
   const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
     const url = typeof input === 'string' ? input : ''
-    if (url === '/api/me' && init?.method === 'POST') {
+    if (url === '/api/me' && init?.method === 'PUT') {
       options.posts?.push(JSON.parse(init.body as string))
-      return Promise.resolve(options.update ?? Response.json(profile))
+      return Promise.resolve(options.update?.() ?? Response.json(profile))
     }
     if (url === '/api/me') return Promise.resolve(options.me?.() ?? Response.json(profile))
     return Promise.resolve(new Response(null, { status: 404 }))
@@ -60,6 +70,7 @@ const openProfile = async () => {
 
 describe('profile', () => {
   beforeEach(() => {
+    vi.mocked(reloadForLogin).mockClear()
     resetProfileStore()
   })
   afterEach(() => {
@@ -80,12 +91,15 @@ describe('profile', () => {
     expect(within(list).getAllByText('Familie')).toHaveLength(2)
   })
 
-  it('says so when the session has expired', async () => {
+  it('reloads the page to sign in again when the session has expired', async () => {
     stubApi({ me: () => new Response(null, { status: 401 }) })
 
     await openProfile()
 
-    expect(await screen.findByText(/Økten din har utløpt/)).toBeInTheDocument()
+    await vi.waitFor(() => {
+      expect(reloadForLogin).toHaveBeenCalled()
+    })
+    expect(screen.queryByText(/Økten din/)).not.toBeInTheDocument()
   })
 
   it('lets the user try again after an error', async () => {
@@ -114,7 +128,13 @@ describe('profile', () => {
 
     await vi.waitFor(() => {
       expect(posts).toEqual([
-        { firstName: 'Kristin', lastName: 'Nordmann', birthYear: 1985, gender: 'MALE' },
+        {
+          firstName: 'Kristin',
+          lastName: 'Nordmann',
+          birthYear: 1985,
+          gender: 'MALE',
+          version: 3,
+        },
       ])
     })
   })
@@ -147,14 +167,63 @@ describe('profile', () => {
     expect(screen.getByRole('link', { name: 'Lagre' })).toHaveClass('disabled')
   })
 
-  it('shows the server error when saving fails', async () => {
-    stubApi({ update: new Response(null, { status: 403 }) })
+  it('opens a dialog when saving is forbidden', async () => {
+    stubApi({ update: () => new Response(null, { status: 403 }) })
     const user = await openProfile()
 
     await openEditPage(user)
     await user.type(screen.getByDisplayValue('Kari'), 'x')
     await user.click(screen.getByRole('link', { name: 'Lagre' }))
 
-    expect(await screen.findByText('Du har ikke tilgang til appen.')).toBeInTheDocument()
+    expect(await screen.findAllByText('Du har ikke tilgang til appen.')).not.toHaveLength(0)
+  })
+
+  it('resets the form to the latest profile when it changed elsewhere', async () => {
+    let latest = profile
+    stubApi({
+      me: () => Response.json(latest),
+      update: () => {
+        latest = { ...profile, firstName: 'Kristin', version: 4 }
+        return Response.json({ code: 'VERSION_MISMATCH', message: 'x' }, { status: 412 })
+      },
+    })
+    const user = await openProfile()
+
+    await openEditPage(user)
+    await user.type(screen.getByDisplayValue('Kari'), 'x')
+    await user.click(screen.getByRole('link', { name: 'Lagre' }))
+
+    expect(await screen.findByText(/Profilen ble endret et annet sted/)).toBeInTheDocument()
+    expect(screen.getByDisplayValue('Kristin')).toBeInTheDocument()
+  })
+
+  it('shows an inline message when saving fails', async () => {
+    stubApi({ update: () => new Response(null, { status: 500 }) })
+    const user = await openProfile()
+
+    await openEditPage(user)
+    await user.type(screen.getByDisplayValue('Kari'), 'x')
+    await user.click(screen.getByRole('link', { name: 'Lagre' }))
+
+    expect(await screen.findByText('Kunne ikke lagre profilen.')).toBeInTheDocument()
+  })
+
+  it('reloads the page when the session expires while saving', async () => {
+    const fetchMock = stubApi()
+    const user = await openProfile()
+
+    await openEditPage(user)
+    fetchMock.mockImplementation((_input: RequestInfo | URL, init?: RequestInit) =>
+      Promise.resolve(
+        init?.method === 'PUT' ? new Response(null, { status: 401 }) : Response.json(profile),
+      ),
+    )
+    await user.type(screen.getByDisplayValue('Kari'), 'x')
+    await user.click(screen.getByRole('link', { name: 'Lagre' }))
+
+    await vi.waitFor(() => {
+      expect(reloadForLogin).toHaveBeenCalled()
+    })
+    expect(screen.queryByText(/Økten din/)).not.toBeInTheDocument()
   })
 })
