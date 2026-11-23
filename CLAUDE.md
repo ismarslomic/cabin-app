@@ -68,6 +68,10 @@ Group by feature, not by technical layer. Full rules in `README.md` ("Folder str
 - Call the API only with relative `/api/...` URLs through `appFetch`; never hard-code the backend hostname. In dev, `API_PROXY_TARGET` and `CF_ACCESS_JWT` in the git-ignored `.env.local` set the Vite proxy target and the Access cookie (README "Backend API"). The proxy is dev-only: never add auth tokens to app code or the build.
 - A shared per-session cache (`features/profile/api/profile-store.ts`) holds the profile; navbars show `ProfileNavRight` from `features/profile/index.ts`.
 
+## Dates and times
+
+- Use `date-fns` and `@date-fns/tz` (wrapped in `features/reservations/lib/dates.ts`); never hand-write date arithmetic, DST or time zone code. Dates are `yyyy-MM-dd` strings, times are Oslo time (`Europe/Oslo`), and the API gets UTC instants. See the "Dates and time zones" gotcha in `README.md`.
+
 ## Icons
 
 - Use `lucide-react` only; import each icon by name (`import { House } from 'lucide-react'`). Never `import *` or look icons up by string, which breaks tree-shaking.
