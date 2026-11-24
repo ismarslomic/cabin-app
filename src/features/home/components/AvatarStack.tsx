@@ -1,6 +1,6 @@
 import { Avatar } from '@/features/profile/index.ts'
 import type { ReservationGuest } from '@/features/home/api/stats-api.ts'
-import { isAtCabin } from '@/features/home/format.ts'
+import { isAtCabin } from '@/features/reservations/index.ts'
 import './AvatarStack.css'
 
 const MAX_AVATARS = 4

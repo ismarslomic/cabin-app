@@ -1,11 +1,37 @@
 import type { ReservationCreate } from '@/features/reservations/api/types.ts'
-import { isDateWithin, osloToInstant } from '@/features/reservations/lib/dates.ts'
+import {
+  DEFAULT_ARRIVAL_TIME_OSLO,
+  DEFAULT_DEPARTURE_TIME_OSLO,
+} from '@/features/reservations/lib/times.ts'
+import { quickPicks } from '@/features/reservations/lib/period.ts'
+import { isDateWithin } from '@/shared/lib/dates.ts'
+import { osloToInstant } from '@/shared/lib/times.ts'
 
 export interface DraftPeriod {
   startDate: string
   endDate: string
   arrivalTime: string
   departureTime: string
+}
+
+/** The period a new reservation starts with: the coming weekend, with the default times. */
+export function initialPeriod(today: string): DraftPeriod {
+  const weekend = quickPicks(today)[0]
+  return {
+    startDate: weekend?.start ?? today,
+    endDate: weekend?.end ?? today,
+    arrivalTime: DEFAULT_ARRIVAL_TIME_OSLO,
+    departureTime: DEFAULT_DEPARTURE_TIME_OSLO,
+  }
+}
+
+export function isSamePeriod(a: DraftPeriod, b: DraftPeriod): boolean {
+  return (
+    a.startDate === b.startDate &&
+    a.endDate === b.endDate &&
+    a.arrivalTime === b.arrivalTime &&
+    a.departureTime === b.departureTime
+  )
 }
 
 /** A guest of the draft; `fromDate`/`toDate` are the guest's own days, null when with the group. */

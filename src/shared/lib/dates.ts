@@ -5,25 +5,21 @@ import {
   differenceInCalendarDays,
   format,
   getISODay,
-  isBefore,
-  isValid,
+  getYear,
+  isSameYear,
   isWithinInterval,
-  parse,
   parseISO,
 } from 'date-fns'
+import { nb } from 'date-fns/locale/nb'
 
 /**
- * Plain calendar dates (`yyyy-MM-dd`) and Oslo wall-clock times, on top of date-fns. The app only
- * talks about Oslo time; the API wants UTC instants. Times are limited to 02:00 or later (see
- * `MIN_TIME`), so the Oslo date and the UTC date of an instant are always the same day.
+ * Plain calendar dates (`yyyy-MM-dd`) and how the app writes them, on top of date-fns. The whole
+ * app talks about Oslo time; the API reports dates as strings and wants UTC instants. Never write
+ * date arithmetic, DST or time zone code by hand: use these helpers or date-fns.
  */
 
-const OSLO = 'Europe/Oslo'
-const DATE_FORMAT = 'yyyy-MM-dd'
-const TIME_FORMAT = 'HH:mm'
-
-/** Earliest time of day. Before 02:00 Oslo time the UTC date is the day before. */
-export const MIN_TIME = '02:00'
+export const OSLO_TIME_ZONE = 'Europe/Oslo'
+export const ISO_DATE_FORMAT = 'yyyy-MM-dd'
 
 /**
  * A `Date` from a date picker (local midnight) as `yyyy-MM-dd`.
@@ -32,7 +28,7 @@ export const MIN_TIME = '02:00'
  * toIsoDate(new Date(2026, 0, 5)) // '2026-01-05'
  */
 export function toIsoDate(date: Date): string {
-  return format(date, DATE_FORMAT)
+  return format(date, ISO_DATE_FORMAT)
 }
 
 /**
@@ -89,6 +85,17 @@ export function nightsBetween(start: string, end: string): number {
 }
 
 /**
+ * "1 natt", "2 netter".
+ *
+ * @example
+ * nightsLabel(1) // '1 natt'
+ * nightsLabel(2) // '2 netter'
+ */
+export function nightsLabel(nights: number): string {
+  return nights === 1 ? '1 natt' : `${nights} netter`
+}
+
+/**
  * Whether a date is between two dates, both ends included.
  *
  * @example
@@ -107,39 +114,39 @@ export function isDateWithin(date: string, start: string, end: string): boolean 
  * todayInOslo(new Date('2026-11-22T23:30:00Z')) // '2026-11-23'
  */
 export function todayInOslo(now: Date = new Date()): string {
-  return format(new TZDate(now, OSLO), DATE_FORMAT)
+  return format(new TZDate(now, OSLO_TIME_ZONE), ISO_DATE_FORMAT)
 }
 
 /**
- * The UTC instant (ISO 8601) of an Oslo date and time. A time that does not exist (the hour the
- * clocks go forward) becomes the time an hour later.
+ * The current year in Oslo, which differs from the UTC year in the first hours of a new year.
  *
  * @example
- * osloToInstant('2026-01-10', '16:00') // '2026-01-10T15:00:00Z' (winter, UTC+1)
- * osloToInstant('2026-07-10', '16:00') // '2026-07-10T14:00:00Z' (summer, UTC+2)
+ * currentYearInOslo(new Date('2026-12-31T23:30:00Z')) // 2027
  */
-export function osloToInstant(date: string, time: string): string {
-  // With a TZDate as reference, `parse` reads the date and time as Oslo time.
-  const parsed = parse(`${date} ${time}`, `${DATE_FORMAT} ${TIME_FORMAT}`, new TZDate(0, OSLO))
-  return new Date(parsed.getTime()).toISOString().replace('.000Z', 'Z')
+export function currentYearInOslo(now: Date = new Date()): number {
+  return getYear(parseISO(todayInOslo(now)))
 }
 
 /**
- * `HH:mm` from 02:00 to 23:59.
+ * A date in Norwegian: weekday, day and month. The year is added when it is not the year of
+ * `today` (a parameter, so callers and tests control the clock).
  *
  * @example
- * isAllowedTime('16:00') // true
- * isAllowedTime('01:59') // false (before 02:00)
- * isAllowedTime('24:00') // false (not a time)
- * isAllowedTime('9:00') // false (must be two digits: '09:00')
+ * formatDate('2026-11-27', '2026-11-23') // 'fre 27. nov.'
+ * formatDate('2027-01-02', '2026-11-23') // 'lør 2. jan. 2027'
  */
-export function isAllowedTime(time: string): boolean {
-  const reference = new Date(0)
-  const parsed = parse(time, TIME_FORMAT, reference)
-  // `parse` also accepts "9:00"; formatting it back keeps only the exact `HH:mm`.
-  return (
-    isValid(parsed) &&
-    format(parsed, TIME_FORMAT) === time &&
-    !isBefore(parsed, parse(MIN_TIME, TIME_FORMAT, reference))
-  )
+export function formatDate(iso: string, today: string): string {
+  const date = parseISO(iso)
+  const pattern = isSameYear(date, parseISO(today)) ? 'EEE d. MMM' : 'EEE d. MMM yyyy'
+  return format(date, pattern, { locale: nb })
+}
+
+/**
+ * Two dates as a range.
+ *
+ * @example
+ * formatDateRange('2026-10-31', '2026-11-02', '2026-10-31') // 'lør 31. okt. – man 2. nov.'
+ */
+export function formatDateRange(start: string, end: string, today: string): string {
+  return `${formatDate(start, today)} – ${formatDate(end, today)}`
 }

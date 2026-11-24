@@ -139,17 +139,31 @@ describe('HomePage', () => {
 
   afterEach(() => {
     vi.useRealTimers()
+    vi.unstubAllEnvs()
+  })
+
+  it('uses today in Oslo, not the phone date, to dim guests who have left', async () => {
+    // A phone in New York: it is still 3 November there (18:30), but 00:30 on 4 November in Oslo,
+    // so the guests' stays (to 3 November) are over.
+    vi.stubEnv('TZ', 'America/New_York')
+    vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-11-03T23:30:00Z') })
+    stubApi({ isOccupied: true, currentReservation: current })
+    const { container } = renderApp()
+    await loaded()
+
+    await screen.findByText('Gjeldende besøk')
+    expect(container.querySelectorAll('.avatar-stack-absent')).toHaveLength(2)
   })
 
   it('shows the current reservation with a tonal reserve button', async () => {
     // Only Date is faked: the guests' stays (2026-11-01 to 2026-11-03) include this day.
-    vi.useFakeTimers({ toFake: ['Date'], now: new Date(2026, 10, 2) })
+    vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-11-02T12:00:00Z') })
     stubApi({ isOccupied: true, currentReservation: current })
     renderApp()
     await loaded()
 
     expect(await screen.findByText('Gjeldende besøk')).toBeInTheDocument()
-    expect(screen.getByText('søn 1. nov – tir 3. nov')).toBeInTheDocument()
+    expect(screen.getByText('søn 1. nov. – tir 3. nov.')).toBeInTheDocument()
     expect(screen.getByText('På hytta nå · 1 natt igjen')).toBeInTheDocument()
     expect(screen.getByText('#7')).toBeInTheDocument()
     expect(screen.getByRole('img', { name: 'Gjester: Kari, Ola' })).toBeInTheDocument()

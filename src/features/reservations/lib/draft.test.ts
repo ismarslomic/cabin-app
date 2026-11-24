@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import {
   buildCreateRequest,
   defaultGuests,
+  initialPeriod,
+  isSamePeriod,
   reconcileGuestDates,
   type DraftGuest,
 } from '@/features/reservations/lib/draft.ts'
@@ -76,5 +78,23 @@ describe('defaultGuests', () => {
     ]
     expect(defaultGuests(all, 'kari').map((g) => g.guestId)).toEqual(['ola', 'kari'])
     expect(defaultGuests(all, 'ola').map((g) => g.guestId)).toEqual(['ola'])
+  })
+})
+
+describe('initialPeriod', () => {
+  it('is the coming weekend with the default times', () => {
+    expect(initialPeriod('2026-11-23')).toEqual({
+      startDate: '2026-11-27',
+      endDate: '2026-11-29',
+      arrivalTime: '16:00',
+      departureTime: '13:00',
+    })
+  })
+
+  it('compares periods field by field', () => {
+    const period = initialPeriod('2026-11-23')
+    expect(isSamePeriod(period, { ...period })).toBe(true)
+    expect(isSamePeriod(period, { ...period, endDate: '2026-11-30' })).toBe(false)
+    expect(isSamePeriod(period, { ...period, arrivalTime: '17:00' })).toBe(false)
   })
 })

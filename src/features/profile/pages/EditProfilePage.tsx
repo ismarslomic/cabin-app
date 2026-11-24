@@ -15,10 +15,9 @@ import { useState } from 'react'
 import { fetchProfile, ProfileApiError, updateProfile } from '@/features/profile/api/profile-api.ts'
 import { setProfile, useProfile } from '@/features/profile/api/profile-store.ts'
 import type { Gender, Profile } from '@/features/profile/api/types.ts'
-import { genderLabels, MIN_BIRTH_YEAR, parseBirthYear } from '@/features/profile/labels.ts'
+import { birthYearErrorMessage, parseBirthYear } from '@/features/profile/birth-year.ts'
+import { genderLabels } from '@/features/profile/labels.ts'
 import { reloadForLogin, SessionExpiredError } from '@/shared/lib/http.ts'
-
-const CURRENT_YEAR = new Date().getFullYear()
 
 function EditScreen({ profile, f7router }: { profile: Profile; f7router: Router.Router }) {
   const [firstName, setFirstName] = useState(profile.firstName)
@@ -28,7 +27,7 @@ function EditScreen({ profile, f7router }: { profile: Profile; f7router: Router.
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string>()
 
-  const year = parseBirthYear(birthYear, CURRENT_YEAR)
+  const year = parseBirthYear(birthYear)
   const yearInvalid = birthYear !== '' && year === null
   const valid = firstName.trim() !== '' && lastName.trim() !== '' && year !== null
   const changed =
@@ -130,7 +129,7 @@ function EditScreen({ profile, f7router }: { profile: Profile; f7router: Router.
           inputmode="numeric"
           value={birthYear}
           errorMessageForce={yearInvalid}
-          errorMessage={`Skriv et årstall mellom ${MIN_BIRTH_YEAR} og ${CURRENT_YEAR}`}
+          errorMessage={birthYearErrorMessage()}
           onInput={(e) => {
             setBirthYear((e.target as HTMLInputElement).value)
           }}

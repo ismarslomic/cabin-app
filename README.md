@@ -38,23 +38,23 @@ pnpm dev
 
 ## Stack
 
-| Tool                                                                                                                                                           | Why                                                                                               | Config                                        |
-| -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- | --------------------------------------------- |
-| [React](https://react.dev/) 19 + [TypeScript](https://www.typescriptlang.org/docs/)                                                                            | UI and types                                                                                      | `tsconfig*.json`                              |
-| [Vite](https://vite.dev/guide/)                                                                                                                                | Dev server and bundler                                                                            | `vite.config.ts`                              |
-| [Framework7](https://framework7.io/react/) + framework7-react                                                                                                  | Mobile UI components (iOS/Material look), router, page transitions                                | `src/app/f7-setup.ts`, `src/app/f7-params.ts` |
-| [lucide-react](https://lucide.dev/guide/packages/lucide-react)                                                                                                 | Icons as React SVG components, tree-shaken per icon                                               | imported where used                           |
-| [date-fns](https://date-fns.org/docs/) + [@date-fns/tz](https://github.com/date-fns/tz)                                                                        | Date arithmetic and Oslo time zone handling (`TZDate`); no hand-written date or DST code          | `src/features/reservations/lib/dates.ts`      |
-| [vite-plugin-pwa](https://vite-pwa-org.netlify.app/) + [workbox-window](https://developer.chrome.com/docs/workbox)                                             | Web app manifest, service worker (Workbox `generateSW`), offline support, update prompt           | `VitePWA(...)` in `vite.config.ts`            |
-| [@vite-pwa/assets-generator](https://vite-pwa-org.netlify.app/assets-generator/)                                                                               | Generates all PWA icons from one SVG                                                              | `pwa-assets.config.ts`                        |
-| [Vitest](https://vitest.dev/guide/) + [jsdom](https://github.com/jsdom/jsdom)                                                                                  | Test runner (shares `vite.config.ts`) and simulated browser DOM                                   | `test` block in `vite.config.ts`              |
-| [@testing-library/react](https://testing-library.com/docs/react-testing-library/intro/) + [`dom`](https://testing-library.com/docs/dom-testing-library/intro/) | Render components and query them like a user would (`dom` is a required peer dependency)          | `src/test/setup.ts`                           |
-| [@testing-library/jest-dom](https://github.com/testing-library/jest-dom)                                                                                       | DOM matchers such as `toBeVisible()` and `toBeInTheDocument()`                                    | `src/test/setup.ts`                           |
-| [@testing-library/user-event](https://testing-library.com/docs/user-event/intro/)                                                                              | Realistic user interaction (`await user.click(...)`)                                              | n/a                                           |
-| [Docker](https://docs.docker.com/) + [nginx](https://nginx.org/en/docs/) (`nginx-unprivileged`)                                                                | Container image that serves the built app as static files, as a non-root user                     | `Dockerfile`, `nginx/`, `docker-compose.yml`  |
-| [oxlint](https://oxc.rs/docs/guide/usage/linter)                                                                                                               | Linting                                                                                           | `.oxlintrc.json`                              |
-| [oxlint-tsgolint](https://oxc.rs/docs/guide/usage/linter/type-aware)                                                                                           | Type-aware lint rules for oxlint (e.g. `no-floating-promises`), powered by the TypeScript Go port | `options.typeAware` in `.oxlintrc.json`       |
-| [oxfmt](https://oxc.rs/docs/guide/usage/formatter)                                                                                                             | Formatting (Prettier-compatible, Rust)                                                            | `.oxfmtrc.json`                               |
+| Tool                                                                                                                                                           | Why                                                                                               | Config                                               |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| [React](https://react.dev/) 19 + [TypeScript](https://www.typescriptlang.org/docs/)                                                                            | UI and types                                                                                      | `tsconfig*.json`                                     |
+| [Vite](https://vite.dev/guide/)                                                                                                                                | Dev server and bundler                                                                            | `vite.config.ts`                                     |
+| [Framework7](https://framework7.io/react/) + framework7-react                                                                                                  | Mobile UI components (iOS/Material look), router, page transitions                                | `src/app/f7-setup.ts`, `src/app/f7-params.ts`        |
+| [lucide-react](https://lucide.dev/guide/packages/lucide-react)                                                                                                 | Icons as React SVG components, tree-shaken per icon                                               | imported where used                                  |
+| [date-fns](https://date-fns.org/docs/) + [@date-fns/tz](https://github.com/date-fns/tz)                                                                        | Date arithmetic and Oslo time zone handling (`TZDate`); no hand-written date or DST code          | `src/shared/lib/dates.ts`, `src/shared/lib/times.ts` |
+| [vite-plugin-pwa](https://vite-pwa-org.netlify.app/) + [workbox-window](https://developer.chrome.com/docs/workbox)                                             | Web app manifest, service worker (Workbox `generateSW`), offline support, update prompt           | `VitePWA(...)` in `vite.config.ts`                   |
+| [@vite-pwa/assets-generator](https://vite-pwa-org.netlify.app/assets-generator/)                                                                               | Generates all PWA icons from one SVG                                                              | `pwa-assets.config.ts`                               |
+| [Vitest](https://vitest.dev/guide/) + [jsdom](https://github.com/jsdom/jsdom)                                                                                  | Test runner (shares `vite.config.ts`) and simulated browser DOM                                   | `test` block in `vite.config.ts`                     |
+| [@testing-library/react](https://testing-library.com/docs/react-testing-library/intro/) + [`dom`](https://testing-library.com/docs/dom-testing-library/intro/) | Render components and query them like a user would (`dom` is a required peer dependency)          | `src/test/setup.ts`                                  |
+| [@testing-library/jest-dom](https://github.com/testing-library/jest-dom)                                                                                       | DOM matchers such as `toBeVisible()` and `toBeInTheDocument()`                                    | `src/test/setup.ts`                                  |
+| [@testing-library/user-event](https://testing-library.com/docs/user-event/intro/)                                                                              | Realistic user interaction (`await user.click(...)`)                                              | n/a                                                  |
+| [Docker](https://docs.docker.com/) + [nginx](https://nginx.org/en/docs/) (`nginx-unprivileged`)                                                                | Container image that serves the built app as static files, as a non-root user                     | `Dockerfile`, `nginx/`, `docker-compose.yml`         |
+| [oxlint](https://oxc.rs/docs/guide/usage/linter)                                                                                                               | Linting                                                                                           | `.oxlintrc.json`                                     |
+| [oxlint-tsgolint](https://oxc.rs/docs/guide/usage/linter/type-aware)                                                                                           | Type-aware lint rules for oxlint (e.g. `no-floating-promises`), powered by the TypeScript Go port | `options.typeAware` in `.oxlintrc.json`              |
+| [oxfmt](https://oxc.rs/docs/guide/usage/formatter)                                                                                                             | Formatting (Prettier-compatible, Rust)                                                            | `.oxfmtrc.json`                                      |
 
 ## Framework7
 
@@ -321,7 +321,7 @@ src/
 ├── main.tsx      # entry point
 ├── app/          # app shell and wiring only (App, Framework7 params and setup, routes)
 ├── features/     # one folder per feature: pages, components, hooks, api, tests
-├── shared/       # used by 2+ features, feature-agnostic
+├── shared/       # everything feature-agnostic: lib/ (helpers), ui/ (components), api/ (generated types)
 └── styles/       # global and theme styling only
 ```
 
@@ -329,15 +329,29 @@ Rules:
 
 1. A feature owns its pages, components, hooks, API calls and tests.
 2. Features import from `shared/`, never from another feature's internals (use its `index.ts`).
-3. Nothing goes in `shared/` until a second feature needs it.
+3. Generic helpers go in `shared/lib/` as soon as they are written, even if one feature uses them today (could another feature use it unchanged? then it is generic). Domain code stays in its feature. Before writing a helper, look in `shared/lib/` and reuse or extend the file for that topic; a new helper gets a test and a JSDoc `@example`.
 4. `app/` only wires things together; features never import from `app/`.
 5. Tests sit next to the code they test.
+
+What is in `shared/lib/` (check here first, extend rather than duplicate):
+
+| File             | What it is for                                                                                                                                |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `dates.ts`       | Plain `yyyy-MM-dd` dates: arithmetic, ISO weekday, nights, `isDateWithin`, `todayInOslo`, `currentYearInOslo`, `formatDate`/`formatDateRange` |
+| `times.ts`       | Times of day (`HH:mm`) in Oslo time: `osloToInstant` (UTC instant for the API), `isTimeOfDay`, `isTimeBefore`                                 |
+| `numbers.ts`     | `isNumber`: is a string exactly the way JavaScript writes a number                                                                            |
+| `distance.ts`    | `formatKm`                                                                                                                                    |
+| `http.ts`        | `appFetch`, `SessionExpiredError`, `reloadForLogin`: every HTTP request goes through it                                                       |
+| `api-error.ts`   | `readApiErrorCode`: the `code` of an `ApiError` body                                                                                          |
+| `app-refresh.ts` | Registers and runs what a pull-to-refresh does                                                                                                |
+
+`shared/ui/` holds feature-agnostic components (`AppPage`, `ErrorState`, `Placeholder`, `ViewSwitcher`). Keep this table in step with the folder when you add a file.
 
 The `@/` alias maps to `src/` (`vite.config.ts` and `tsconfig.app.json`), e.g. `import App from '@/app/App.tsx'`.
 
 ## Gotchas and decisions
 
-- **Dates and time zones:** the API takes UTC instants, the app talks Oslo time. Dates are plain `yyyy-MM-dd` strings; all date arithmetic and the Oslo-to-UTC conversion go through date-fns and `@date-fns/tz` (wrapped in `features/reservations/lib/dates.ts`). Times of day are limited to 02:00-23:59 so the Oslo date and the UTC date of an instant are always the same day (the API reads the UTC date as the first and last day of a stay).
+- **Dates and time zones:** the API takes UTC instants, the app talks Oslo time. Dates are plain `yyyy-MM-dd` strings; all date arithmetic, how dates are written (`formatDate`, `formatDateRange`: weekday, day, month from date-fns `nb`, the year only when it is not the current year) and "today" (`todayInOslo()`, never the device's date) live in `src/shared/lib/dates.ts`, built on date-fns and `@date-fns/tz`. The Oslo-time-of-day to UTC conversion is in `src/shared/lib/times.ts`; the times a reservation may have (defaults, the 02:00 minimum) are in `src/features/reservations/lib/times.ts`. Times of day are limited to 02:00-23:59 so the Oslo date and the UTC date of an instant are always the same day (the API reads the UTC date as the first and last day of a stay).
 - **Language:** Norwegian Bokmål (`nb`) is set in three places: `lang="nb"` in `index.html`, `lang: 'nb'` in the PWA manifest, and the Framework7 texts in `f7-params.ts`.
 - **oxfmt config:** `semi: false` and `singleQuote: true` differ from oxfmt's defaults (semicolons, double quotes); they match the code style the project started with. oxfmt also formats Markdown and JSON, so `pnpm format` touches `README.md` and `package.json` too.
 - **Node 26:** LTS since 2026-10-28 and supported by every tool in the stack. Pinned to an exact version in `.nvmrc` (and `engines` requires 26+). `nvm use` needs that exact version installed; `nvm install` fetches it. Bump `@types/node` together with Node: types should match the Node version in use, not the newest release.

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { describeCreateFailure } from '@/features/reservations/api/error-texts.ts'
 import { ReservationApiError } from '@/features/reservations/api/reservations-api.ts'
+import { SessionExpiredError } from '@/shared/lib/http.ts'
 
 describe('describeCreateFailure', () => {
   it.each(['OVERLAP', 'TOO_LONG', 'TOO_FAR_AHEAD', 'END_BEFORE_START'])(
@@ -13,8 +14,15 @@ describe('describeCreateFailure', () => {
     },
   )
 
-  it('maps a conflict without a readable body to the general text', () => {
-    expect(describeCreateFailure(new ReservationApiError(409))).toMatchObject({ kind: 'inline' })
+  it('treats a conflict as an overlap even without a readable body', () => {
+    expect(describeCreateFailure(new ReservationApiError(409))).toEqual({
+      kind: 'period',
+      problem: 'OVERLAP',
+    })
+  })
+
+  it('reloads for the login when the session has expired', () => {
+    expect(describeCreateFailure(new SessionExpiredError())).toEqual({ kind: 'session' })
   })
 
   it('explains an unknown guest', () => {

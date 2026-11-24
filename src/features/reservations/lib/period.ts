@@ -1,6 +1,6 @@
 import type { Reservation } from '@/features/reservations/api/types.ts'
 import type { PeriodProblem } from '@/features/reservations/api/error-texts.ts'
-import { addDays, addYears, isoWeekday, nightsBetween } from '@/features/reservations/lib/dates.ts'
+import { addDays, addYears, isoWeekday, nightsBetween } from '@/shared/lib/dates.ts'
 
 export const MAX_NIGHTS = 60
 const MAX_YEARS_AHEAD = 2

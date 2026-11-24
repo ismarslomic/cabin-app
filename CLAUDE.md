@@ -18,7 +18,9 @@ This file overrides the global Kotlin/Gradle instructions: this is a **pnpm** pr
 Group by feature, not by technical layer. Full rules in `README.md` ("Folder structure").
 
 - `src/app/`: wiring only. `src/features/<name>/`: pages, components, hooks, api, tests.
-- `src/shared/`: only when 2+ features need it. `src/styles/`: global styling only.
+- `src/shared/`: everything feature-agnostic. `src/styles/`: global styling only.
+- **Generic helpers go in `src/shared/lib/` as soon as you write them**, even if only one feature uses them today. Test: could another feature use it unchanged, without any reservation, profile or Home concept? If yes, it is generic. Domain logic stays in its feature (for example the 02:00 reservation rule, status texts, `parseBirthYear`).
+- **Before writing a helper, look in `src/shared/lib/`** (`ls`, grep; the README "Folder structure" chapter lists what is there) and reuse or extend the file for that topic (dates, times, numbers, distance, http, API errors) instead of adding a near-duplicate or a generic function inside a feature folder. A new shared helper gets a test next to it and a JSDoc `@example`.
 - Features never import another feature's internals, and never import from `app/`.
 - Use the `@/` alias for `src/`, not `../../..`.
 - **Coverage rules** (`codecov.yml`): a PR may lower total coverage by at most 2 points, and the lines it changes must be covered at least 80%. Write tests with the code, run `pnpm test:coverage` before committing and check the changed files in the report; if a changed file is under 80%, add tests before asking to commit.
@@ -70,7 +72,7 @@ Group by feature, not by technical layer. Full rules in `README.md` ("Folder str
 
 ## Dates and times
 
-- Use `date-fns` and `@date-fns/tz` (wrapped in `features/reservations/lib/dates.ts`); never hand-write date arithmetic, DST or time zone code. Dates are `yyyy-MM-dd` strings, times are Oslo time (`Europe/Oslo`), and the API gets UTC instants. See the "Dates and time zones" gotcha in `README.md`.
+- Use `date-fns` and `@date-fns/tz` through `shared/lib/dates.ts` (generic helpers, how dates are written, today in Oslo) and `shared/lib/times.ts` (Oslo time of day to UTC instants) and `features/reservations/lib/times.ts` (the times a reservation may have); never hand-write date arithmetic, DST, time zone code or month and weekday lists. Dates are `yyyy-MM-dd` strings, times are Oslo time (`Europe/Oslo`), and the API gets UTC instants. "Today" is always `todayInOslo()`, never the device's date. Dates are written by `formatDate`/`formatDateRange` (year only when it is not the current year). See the "Dates and time zones" gotcha in `README.md`.
 
 ## Icons
 
@@ -94,6 +96,7 @@ Group by feature, not by technical layer. Full rules in `README.md` ("Folder str
 
 - **Confirm the plan before executing it.** Present the plan (decisions, files, approach) and wait for an explicit go before writing code. An earlier answer to a question is not a go.
 - **Confirm before every commit.** Show what will be committed (files and message) and wait for approval each time; approval for one commit does not cover the next.
+- **Peer review before asking to commit.** When a change is finished and `pnpm check` is green, start a separate review agent (Agent tool, fresh context, read-only: it must not edit files) for the uncommitted changes and for the commits on the branch that have not been reviewed yet. Give it only the scope (`git diff`, commit hashes) and where the rules are (`CLAUDE.md`, `README.md`, the plan in `.claude/plans/`); do not hand it your own conclusions. Ask it to flag generic helpers written inside a feature folder and duplicates of something already in `src/shared/lib/`. **Wait for its report** and do not continue other work meanwhile. Then check each finding yourself, fix the valid ones, run `pnpm check` again, and give the user a short summary: findings, what was fixed, and what was not fixed and why. Only then ask for approval to commit. Do not review the same commit twice.
 - Small, focused commits; end commit messages with the Co-Authored-By line. Never force push.
 - Match existing style. Do not reformat files you did not touch.
 - Check the library's current docs before configuring it; do not rely on memory.

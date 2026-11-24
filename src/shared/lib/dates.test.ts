@@ -2,15 +2,17 @@ import { describe, expect, it } from 'vitest'
 import {
   addDays,
   addYears,
+  currentYearInOslo,
+  formatDate,
+  formatDateRange,
   fromIsoDate,
-  isAllowedTime,
   isDateWithin,
   isoWeekday,
   nightsBetween,
-  osloToInstant,
+  nightsLabel,
   toIsoDate,
   todayInOslo,
-} from '@/features/reservations/lib/dates.ts'
+} from '@/shared/lib/dates.ts'
 
 describe('dates', () => {
   it('adds days across month and year borders', () => {
@@ -42,6 +44,11 @@ describe('dates', () => {
     expect(nightsBetween('2026-03-28', '2026-03-30')).toBe(2)
   })
 
+  it('writes nights in the singular and the plural', () => {
+    expect(nightsLabel(1)).toBe('1 natt')
+    expect(nightsLabel(2)).toBe('2 netter')
+  })
+
   it('converts between Date and yyyy-MM-dd with local components', () => {
     expect(toIsoDate(new Date(2026, 0, 5))).toBe('2026-01-05')
     expect(toIsoDate(fromIsoDate('2026-11-23'))).toBe('2026-11-23')
@@ -52,24 +59,43 @@ describe('dates', () => {
     expect(todayInOslo(new Date('2026-07-01T21:59:00Z'))).toBe('2026-07-01')
     expect(todayInOslo(new Date('2026-07-01T22:00:00Z'))).toBe('2026-07-02')
   })
+})
 
-  it('converts Oslo times to UTC in winter and summer', () => {
-    expect(osloToInstant('2026-01-10', '16:00')).toBe('2026-01-10T15:00:00Z')
-    expect(osloToInstant('2026-07-10', '16:00')).toBe('2026-07-10T14:00:00Z')
+describe('currentYearInOslo', () => {
+  it('is the year in Oslo, which is ahead of UTC at New Year', () => {
+    expect(currentYearInOslo(new Date('2026-12-31T22:59:00Z'))).toBe(2026)
+    expect(currentYearInOslo(new Date('2026-12-31T23:00:00Z'))).toBe(2027)
+    expect(currentYearInOslo(new Date('2026-06-15T12:00:00Z'))).toBe(2026)
+  })
+})
+
+describe('formatDate', () => {
+  it('writes weekday, day and month, without the year in the current year', () => {
+    expect(formatDate('2026-11-27', '2026-11-23')).toBe('fre 27. nov.')
+    expect(formatDate('2026-12-06', '2026-11-23')).toBe('søn 6. des.')
   })
 
-  it('handles the days the clocks change', () => {
-    expect(osloToInstant('2026-03-29', '13:00')).toBe('2026-03-29T11:00:00Z')
-    expect(osloToInstant('2026-10-25', '13:00')).toBe('2026-10-25T12:00:00Z')
-    // 02:30 does not exist on 2026-03-29: it becomes 03:30 (01:30Z) on the same UTC day.
-    expect(osloToInstant('2026-03-29', '02:30')).toBe('2026-03-29T01:30:00Z')
+  it('adds the year to a date outside the current year', () => {
+    expect(formatDate('2027-01-02', '2026-11-23')).toBe('lør 2. jan. 2027')
+    expect(formatDate('2025-10-31', '2026-11-23')).toBe('fre 31. okt. 2025')
   })
 
-  it('allows times from 02:00 to 23:59 only', () => {
-    expect(isAllowedTime('02:00')).toBe(true)
-    expect(isAllowedTime('23:59')).toBe(true)
-    expect(isAllowedTime('01:59')).toBe(false)
-    expect(isAllowedTime('24:00')).toBe(false)
-    expect(isAllowedTime('9:00')).toBe(false)
+  it('uses the library month names', () => {
+    expect(formatDate('2026-03-05', '2026-01-01')).toBe('tor 5. mars')
+    expect(formatDate('2026-06-05', '2026-01-01')).toBe('fre 5. juni')
+  })
+})
+
+describe('formatDateRange', () => {
+  it('writes both dates', () => {
+    expect(formatDateRange('2026-10-31', '2026-11-02', '2026-10-31')).toBe(
+      'lør 31. okt. – man 2. nov.',
+    )
+  })
+
+  it('adds the year to a date outside the current year', () => {
+    expect(formatDateRange('2026-12-30', '2027-01-02', '2026-10-31')).toBe(
+      'ons 30. des. – lør 2. jan. 2027',
+    )
   })
 })
