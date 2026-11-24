@@ -142,7 +142,9 @@ describe('NewReservationPopup', () => {
 
     // A row outside the list's <ul> would have no card and show list bullets.
     expect(arrival.closest('.list ul')).toBeInTheDocument()
-    expect(screen.getByText('Start').closest('.list ul')).toBe(arrival.closest('.list ul'))
+    expect(screen.getByRole('button', { name: 'fre 27. nov.' }).closest('.list ul')).toBe(
+      arrival.closest('.list ul'),
+    )
     expect(screen.getByLabelText('Avreise kl.').closest('.list ul')).toBe(
       arrival.closest('.list ul'),
     )
@@ -165,7 +167,7 @@ describe('NewReservationPopup', () => {
     const user = userEvent.setup()
     renderPopup()
 
-    await user.click(await screen.findByText('Start'))
+    await user.click(await screen.findByRole('button', { name: 'fre 27. nov.' }))
 
     expect(document.querySelector('.calendar-sheet')).toBeInTheDocument()
   })
@@ -175,7 +177,7 @@ describe('NewReservationPopup', () => {
     const user = userEvent.setup()
     renderPopup()
 
-    await user.click(await screen.findByText('Start'))
+    await user.click(await screen.findByRole('button', { name: 'fre 27. nov.' }))
     // The calendar counts months from 0: "2026-10-12" is 12 November.
     await user.click(calendarDay('2026-10-12'))
     await user.click(calendarDay('2026-10-14'))
@@ -190,7 +192,7 @@ describe('NewReservationPopup', () => {
     const user = userEvent.setup()
     renderPopup()
 
-    await user.click(await screen.findByText('Start'))
+    await user.click(await screen.findByRole('button', { name: 'fre 27. nov.' }))
     await user.click(calendarDay('2026-10-12'))
     expect(screen.getByText('fre 27. nov.')).toBeInTheDocument()
 
@@ -205,7 +207,7 @@ describe('NewReservationPopup', () => {
     const user = userEvent.setup()
     renderPopup()
 
-    await user.click(await screen.findByText('Start'))
+    await user.click(await screen.findByRole('button', { name: 'fre 27. nov.' }))
     await user.click(calendarDay('2026-10-12'))
     await user.click(calendarDay('2026-10-12'))
 
@@ -221,7 +223,7 @@ describe('NewReservationPopup', () => {
     renderPopup()
 
     await user.click(await screen.findByRole('link', { name: 'Neste helg' }))
-    await user.click(screen.getByText('Start'))
+    await user.click(screen.getByRole('button', { name: 'fre 4. des.' }))
 
     expect(calendarDay('2026-11-11')).toHaveClass('calendar-day-disabled')
     expect(calendarDay('2026-11-13')).toHaveClass('calendar-day-disabled')
@@ -423,7 +425,7 @@ describe('NewReservationPopup', () => {
 
     async function submit(user: ReturnType<typeof userEvent.setup>) {
       await user.click(await screen.findByRole('link', { name: 'Neste' }))
-      await user.click(screen.getByRole('link', { name: 'Opprett reservasjon' }))
+      await user.click(screen.getByRole('link', { name: 'Opprett' }))
     }
 
     it('sends the period and the guests, then tells the parent and closes', async () => {
@@ -513,7 +515,7 @@ describe('NewReservationPopup', () => {
         'En av gjestene finnes ikke lenger. Fjern gjesten og prøv igjen.',
       )
       expect(screen.getByText('Gjester (3)')).toBeInTheDocument()
-      expect(screen.getByRole('link', { name: 'Opprett reservasjon' })).not.toHaveClass('disabled')
+      expect(screen.getByRole('link', { name: 'Opprett' })).not.toHaveClass('disabled')
     })
 
     it('clears the problem on a retry and closes when it then works', async () => {
@@ -530,7 +532,7 @@ describe('NewReservationPopup', () => {
 
       await submit(user)
       expect(await screen.findByRole('alert')).toBeInTheDocument()
-      await user.click(screen.getByRole('link', { name: 'Opprett reservasjon' }))
+      await user.click(screen.getByRole('link', { name: 'Opprett' }))
 
       await waitFor(() => {
         expect(onCreated).toHaveBeenCalledOnce()
@@ -559,7 +561,7 @@ describe('NewReservationPopup', () => {
       await submit(user)
       await screen.findByText(NETWORK_TEXT)
 
-      expect(screen.getByRole('link', { name: 'Opprett reservasjon' })).not.toHaveClass('disabled')
+      expect(screen.getByRole('link', { name: 'Opprett' })).not.toHaveClass('disabled')
     })
 
     it('does not close a popup opened since when an old request ends', async () => {

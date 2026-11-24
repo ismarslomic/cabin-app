@@ -11,7 +11,9 @@ import {
   NavTitle,
   Page,
   Popup,
+  Preloader,
 } from 'framework7-react'
+import { X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { reloadProfile, useProfile } from '@/features/profile/index.ts'
 import {
@@ -24,6 +26,7 @@ import { useReservationFlowData } from '@/features/reservations/api/useReservati
 import GuestDetail from '@/features/reservations/components/GuestDetail.tsx'
 import GuestPicker from '@/features/reservations/components/GuestPicker.tsx'
 import GuestsStep from '@/features/reservations/components/GuestsStep.tsx'
+import '@/features/reservations/components/NewReservationPopup.css'
 import PeriodStep from '@/features/reservations/components/PeriodStep.tsx'
 import StepIndicator from '@/features/reservations/components/StepIndicator.tsx'
 import {
@@ -38,36 +41,65 @@ import {
 } from '@/features/reservations/lib/draft.ts'
 import { addGuests, guestsToAdd, MAX_GUESTS } from '@/features/reservations/lib/guests.ts'
 import { classifyFailure, type Failure } from '@/shared/lib/api-error.ts'
+import { periodIssueText } from '@/features/reservations/lib/period-issue.ts'
 import { todayInOslo } from '@/shared/lib/dates.ts'
 import { handleCommonFailure } from '@/shared/ui/failure-feedback.ts'
 import ErrorState from '@/shared/ui/ErrorState.tsx'
 
 const STEPS = ['Periode', 'Gjester']
 
+interface PrimaryAction {
+  label: string
+  disabled: boolean
+  /** Shows a preloader instead of the label. */
+  busy?: boolean
+  onClick: () => void
+}
+
 interface FlowNavbarProps {
   /** The reservation is being sent: going back or cancelling waits until it is done. */
   busy?: boolean
   /** The step to go back from; no "Tilbake" on the first step. */
   step: number
+  /** What the user does next ("Neste", "Opprett"), at the top right like the iOS Calendar. */
+  primary?: PrimaryAction
   onBack: () => void
   onCancel: () => void
 }
 
-function FlowNavbar({ busy = false, step, onBack, onCancel }: FlowNavbarProps) {
+// Like the iOS Calendar's "new event": close on the left, the primary action on the right.
+function FlowNavbar({ busy = false, step, primary, onBack, onCancel }: FlowNavbarProps) {
+  const waiting = busy ? 'disabled' : undefined
+  const primaryDisabled = primary?.disabled || primary?.busy
   return (
     <Navbar>
       <NavLeft>
+        <Link
+          iconOnly
+          aria-label="Avbryt"
+          className={waiting}
+          onClick={busy ? undefined : onCancel}
+        >
+          <X size={22} aria-hidden="true" />
+        </Link>
         {step > 0 && (
-          <Link className={busy ? 'disabled' : undefined} onClick={busy ? undefined : onBack}>
+          <Link className={waiting} onClick={busy ? undefined : onBack}>
             Tilbake
           </Link>
         )}
       </NavLeft>
       <NavTitle>Ny reservasjon</NavTitle>
       <NavRight>
-        <Link className={busy ? 'disabled' : undefined} onClick={busy ? undefined : onCancel}>
-          Avbryt
-        </Link>
+        {primary && (
+          <Link
+            aria-label={primary.label}
+            aria-busy={primary.busy}
+            className={primaryDisabled ? 'flow-primary disabled' : 'flow-primary'}
+            onClick={primaryDisabled ? undefined : primary.onClick}
+          >
+            {primary.busy ? <Preloader size={18} /> : primary.label}
+          </Link>
+        )}
       </NavRight>
     </Navbar>
   )
@@ -188,6 +220,25 @@ function DraftFlow({
     if (alive.current) onClose()
   }
 
+  const periodIssue = periodIssueText(period, today, reservations, serverProblem)
+  const primary: PrimaryAction =
+    step === 0
+      ? {
+          label: 'Neste',
+          disabled: periodIssue !== undefined,
+          onClick: () => {
+            setStep(1)
+          },
+        }
+      : {
+          label: 'Opprett',
+          disabled: false,
+          busy: submitting,
+          onClick: () => {
+            void submit()
+          },
+        }
+
   const openGuest =
     openGuestId === null ? undefined : draftGuests.find((guest) => guest.guestId === openGuestId)
 
@@ -196,6 +247,7 @@ function DraftFlow({
       <FlowNavbar
         busy={submitting}
         step={step}
+        primary={primary}
         onBack={() => {
           setStep(step - 1)
         }}
@@ -207,11 +259,8 @@ function DraftFlow({
           period={period}
           today={today}
           reservations={reservations}
-          serverProblem={serverProblem}
+          message={periodIssue}
           onChange={changePeriod}
-          onNext={() => {
-            setStep(1)
-          }}
         />
       )}
       {step === 1 && (
@@ -221,15 +270,11 @@ function DraftFlow({
           period={period}
           today={today}
           datesWereReset={datesWereReset}
-          submitting={submitting}
           submitError={submitError}
           onOpenGuest={setOpenGuestId}
           onRemoveGuest={removeGuest}
           onAddGuest={() => {
             setPicking(true)
-          }}
-          onSubmit={() => {
-            void submit()
           }}
         />
       )}

@@ -1,14 +1,9 @@
 import { Block, BlockTitle, Button, f7, List, ListItem, Segmented } from 'framework7-react'
+import { CircleAlert } from 'lucide-react'
 import '@/features/reservations/components/PeriodStep.css'
-import { type PeriodProblem, periodProblemTexts } from '@/features/reservations/api/error-texts.ts'
 import type { Reservation } from '@/features/reservations/api/types.ts'
 import type { DraftPeriod } from '@/features/reservations/lib/draft.ts'
-import {
-  bookedRanges,
-  maxDate,
-  periodProblem,
-  quickPicks,
-} from '@/features/reservations/lib/period.ts'
+import { bookedRanges, maxDate, quickPicks } from '@/features/reservations/lib/period.ts'
 import { isAllowedTime, MIN_TIME_OSLO } from '@/features/reservations/lib/times.ts'
 import {
   formatDate,
@@ -23,61 +18,71 @@ interface PeriodStepProps {
   /** Today in Oslo; the quick picks and the last allowed date follow it. */
   today: string
   reservations: Reservation[]
-  /** A problem the server reported for this period; shown until the period is changed. */
-  serverProblem?: PeriodProblem
+  /** What is wrong with the period, shown under the card (see `periodIssueText`). */
+  message?: string
   onChange: (period: DraftPeriod) => void
-  onNext: () => void
 }
 
-const timeError = `Velg et tidspunkt mellom ${MIN_TIME_OSLO} og 23:59.`
-
-interface TimeInputOptions {
-  id: string
-  label: string
-  value: string
-  onChange: (time: string) => void
+interface StayRowOptions {
+  title: string
+  /** The day, `yyyy-MM-dd`. */
+  date: string
+  today: string
+  time: string
+  /** The accessible name of the time field. */
+  timeLabel: string
+  onOpenCalendar: () => void
+  onTimeChange: (time: string) => void
 }
 
-// A time row, laid out like the date rows: the label as the title, the time on the right. It has a
-// real <label>, so the input has an accessible name. This is a function that returns the element,
-// not a component: Framework7's `List` puts only `ListItem` and `ListInput` elements inside its
-// <ul>, so a wrapper component would end up outside the card (with list bullets).
-function renderTimeInput({ id, label, value, onChange }: TimeInputOptions) {
+// An arrival or departure row like "Starts" in the iOS Calendar: the day and the time as two chips
+// on the right. This is a function that returns the element, not a component: Framework7's `List`
+// puts only `ListItem` and `ListInput` elements inside its <ul>, so a wrapper component would end up
+// outside the card (with list bullets).
+function renderStayRow({
+  title,
+  date,
+  today,
+  time,
+  timeLabel,
+  onOpenCalendar,
+  onTimeChange,
+}: StayRowOptions) {
   return (
-    <ListItem className="period-time">
-      <label slot="title" htmlFor={id}>
-        {label}
-      </label>
-      <input
-        slot="after"
-        id={id}
-        type="time"
-        value={value}
-        min={MIN_TIME_OSLO}
-        aria-invalid={!isAllowedTime(value)}
-        onChange={(event) => {
-          onChange(event.target.value)
-        }}
-      />
+    <ListItem title={title}>
+      <div slot="after" className="period-chips">
+        <button type="button" className="period-chip" onClick={onOpenCalendar}>
+          {formatDate(date, today)}
+        </button>
+        {/* The pill is a wrapper: Framework7 resets the background of an input in a list. */}
+        <span className="period-chip period-chip-time">
+          <input
+            type="time"
+            aria-label={timeLabel}
+            aria-invalid={!isAllowedTime(time)}
+            value={time}
+            min={MIN_TIME_OSLO}
+            onChange={(event) => {
+              onTimeChange(event.target.value)
+            }}
+          />
+        </span>
+      </div>
     </ListItem>
   )
 }
 
-// Step 1: the dates (quick picks or a range in the calendar), the times and a summary.
+// Step 1: the days (quick picks or a range in the calendar), the times and the length of the stay.
 export default function PeriodStep({
   period,
   today,
   reservations,
-  serverProblem,
+  message,
   onChange,
-  onNext,
 }: PeriodStepProps) {
   const { startDate, endDate, arrivalTime, departureTime } = period
   const picks = quickPicks(today)
-  const problem = periodProblem(startDate, endDate, today, reservations) ?? serverProblem
-  const timesValid = isAllowedTime(arrivalTime) && isAllowedTime(departureTime)
-  // One message at a time: the period problem first, then a time that is not allowed.
-  const message = problem ? periodProblemTexts[problem] : timesValid ? undefined : timeError
+  const nights = nightsBetween(startDate, endDate)
 
   const openCalendar = () => {
     const calendar = f7.calendar.create({
@@ -113,7 +118,7 @@ export default function PeriodStep({
     <>
       <BlockTitle>Hurtigvalg</BlockTitle>
       <Block>
-        <Segmented strong tag="p">
+        <Segmented strong tag="p" className="period-quick-picks">
           {picks.map((pick) => (
             <Button
               key={pick.id}
@@ -128,49 +133,39 @@ export default function PeriodStep({
         </Segmented>
       </Block>
       <BlockTitle>Eller velg datoer</BlockTitle>
-      <List strong inset>
-        <ListItem
-          link="#"
-          title="Start"
-          after={formatDate(startDate, today)}
-          onClick={openCalendar}
-        />
-        <ListItem
-          link="#"
-          title="Slutt"
-          after={formatDate(endDate, today)}
-          onClick={openCalendar}
-        />
-        {renderTimeInput({
-          id: 'reservation-arrival-time',
-          label: 'Ankomst kl.',
-          value: arrivalTime,
-          onChange: (time) => {
+      <List strong inset dividersIos>
+        {renderStayRow({
+          title: 'Ankomst',
+          date: startDate,
+          today,
+          time: arrivalTime,
+          timeLabel: 'Ankomst kl.',
+          onOpenCalendar: openCalendar,
+          onTimeChange: (time) => {
             onChange({ ...period, arrivalTime: time })
           },
         })}
-        {renderTimeInput({
-          id: 'reservation-departure-time',
-          label: 'Avreise kl.',
-          value: departureTime,
-          onChange: (time) => {
+        {renderStayRow({
+          title: 'Avreise',
+          date: endDate,
+          today,
+          time: departureTime,
+          timeLabel: 'Avreise kl.',
+          onOpenCalendar: openCalendar,
+          onTimeChange: (time) => {
             onChange({ ...period, departureTime: time })
           },
         })}
-        {!problem && (
-          <ListItem title="Varighet" after={nightsLabel(nightsBetween(startDate, endDate))} />
-        )}
+        {nights >= 1 && <ListItem title="Varighet" after={nightsLabel(nights)} />}
       </List>
       {message && (
         <div role="alert">
-          <Block className="text-color-red">{message}</Block>
+          <Block className="text-color-red period-message">
+            <CircleAlert size={16} aria-hidden="true" />
+            <span>{message}</span>
+          </Block>
         </div>
       )}
-      <Block>
-        <Button large round fill disabled={!!problem || !timesValid} onClick={onNext}>
-          Neste
-        </Button>
-      </Block>
     </>
   )
 }

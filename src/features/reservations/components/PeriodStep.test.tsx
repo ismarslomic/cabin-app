@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import PeriodStep from '@/features/reservations/components/PeriodStep.tsx'
 import type { DraftPeriod } from '@/features/reservations/lib/draft.ts'
+import { periodIssueText } from '@/features/reservations/lib/period-issue.ts'
 import { renderWithF7 } from '@/test/render-f7.tsx'
 
 const TODAY = '2026-11-23'
@@ -17,7 +18,7 @@ const weekend: DraftPeriod = {
 }
 
 // Keeps the period in state like the flow does, and reports every change to the spy.
-function Step({ initial, onChange, onNext }: StepProps) {
+function Step({ initial, onChange }: StepProps) {
   const [period, setPeriod] = useState(initial)
   return (
     <Page>
@@ -25,11 +26,11 @@ function Step({ initial, onChange, onNext }: StepProps) {
         period={period}
         today={TODAY}
         reservations={[]}
+        message={periodIssueText(period, TODAY, [])}
         onChange={(next) => {
           setPeriod(next)
           onChange(next)
         }}
-        onNext={onNext}
       />
     </Page>
   )
@@ -38,23 +39,25 @@ function Step({ initial, onChange, onNext }: StepProps) {
 interface StepProps {
   initial: DraftPeriod
   onChange: (period: DraftPeriod) => void
-  onNext: () => void
 }
 
 function renderStep(initial: DraftPeriod = weekend) {
   const onChange = vi.fn()
-  const onNext = vi.fn()
-  renderWithF7(<Step initial={initial} onChange={onChange} onNext={onNext} />)
-  return { onChange, onNext }
+  renderWithF7(<Step initial={initial} onChange={onChange} />)
+  return { onChange }
 }
 
 describe('PeriodStep', () => {
-  it('goes on with "Neste" when the period is fine', async () => {
-    const { onNext } = renderStep()
+  it('shows arrival and departure as a day and a time each', async () => {
+    renderStep()
 
-    await userEvent.click(await screen.findByRole('link', { name: 'Neste' }))
-
-    expect(onNext).toHaveBeenCalledOnce()
+    expect(await screen.findByText('Ankomst')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'fre 27. nov.' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Ankomst kl.')).toHaveValue('16:00')
+    expect(screen.getByText('Avreise')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'søn 29. nov.' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Avreise kl.')).toHaveValue('13:00')
+    expect(screen.getByText('2 netter')).toBeInTheDocument()
   })
 
   it('reports a quick pick as a new period, keeping the times', async () => {
@@ -95,8 +98,19 @@ describe('PeriodStep', () => {
     renderStep({ ...weekend, ...dates })
 
     expect(await screen.findByRole('alert')).toHaveTextContent(text)
-    expect(screen.getByRole('link', { name: 'Neste' })).toHaveClass('disabled')
+  })
+
+  it('has no length when the end is not after the start, but keeps it for other problems', async () => {
+    renderStep({ ...weekend, endDate: '2026-11-27' })
+    await screen.findByRole('alert')
     expect(screen.queryByText('Varighet')).not.toBeInTheDocument()
+  })
+
+  it('keeps the length visible while another problem is shown', async () => {
+    renderStep({ ...weekend, startDate: '2026-12-01', endDate: '2027-01-31' })
+
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+    expect(screen.getByText('Varighet')).toBeInTheDocument()
   })
 
   it('writes one night in the singular', async () => {

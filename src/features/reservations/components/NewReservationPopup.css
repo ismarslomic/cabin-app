@@ -1,0 +1,28 @@
+/* The primary action at the top right ("Neste", "Opprett"). Framework7's iOS navbar draws the glass
+   pill around the whole `.right` group, not around the link, so the pill itself is tinted with the
+   accent color (like a prominent glass button) and the link stays plain. */
+.ios .navbar .right:has(.flow-primary) {
+  background-color: var(--f7-theme-color);
+}
+
+/* Not possible yet: the same pill, dimmed. */
+.ios .navbar .right:has(.flow-primary.disabled) {
+  background-color: color-mix(in srgb, var(--f7-theme-color) 40%, transparent);
+}
+
+.ios .navbar a.link.flow-primary {
+  color: var(--f7-button-fill-text-color);
+  font-weight: 600;
+}
+
+/* A message under a group of rows: an icon and the text, in line. */
+.period-message {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.period-message svg {
+  flex: none;
+  margin-top: 2px;
+}

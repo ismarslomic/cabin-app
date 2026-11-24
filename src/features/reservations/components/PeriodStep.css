@@ -1,8 +1,76 @@
-/* The time on the right, like the values of the date rows. */
-.period-time input {
+/* The day and the time as two chips on the right of a row, like "Starts" in the iOS Calendar. */
+.period-chips {
+  display: flex;
+  gap: 8px;
+}
+
+/* The day is a button and the time a native input in a wrapper; both are the same pill. The pill
+   must not shrink inside the row (its text would overflow it). */
+.period-chips .period-chip {
+  flex: 0 0 auto;
+  width: auto;
+  max-width: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  height: 36px;
+  margin: 0;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--cabin-chip);
+  color: var(--f7-text-color);
+  font: inherit;
+  white-space: nowrap;
+}
+
+.period-chip-time {
+  min-width: 72px;
+}
+
+/* The input inside the time pill is plain: no background, no clock icon, the time centered. */
+.period-chip-time input {
+  width: 4.5em;
+  height: 100%;
+  margin: 0;
+  padding: 0;
   border: 0;
   background: transparent;
   color: inherit;
   font: inherit;
-  text-align: right;
+  text-align: center;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.period-chip-time input::-webkit-calendar-picker-indicator {
+  display: none;
+}
+
+.period-chip-time input::-webkit-date-and-time-value {
+  text-align: center;
+}
+
+/* The quick picks as two capsules. Framework7 slides a separate highlight element behind the labels;
+   here the selected button is drawn itself (no highlight, no layering between label and highlight),
+   so the label color cannot be hidden by it. The radius variable gives the buttons their capsule.
+   (The sliding animation only works inside a Subnavbar, as on the Calendar page.) */
+.period-quick-picks {
+  --f7-button-border-radius: 999px;
+}
+
+.period-quick-picks .segmented-highlight {
+  display: none;
+}
+
+.period-quick-picks .button {
+  --f7-button-text-color: var(--cabin-muted);
+  color: var(--cabin-muted);
+}
+
+.period-quick-picks .button.button-active {
+  --f7-button-text-color: var(--f7-button-fill-text-color);
+  background-color: var(--f7-theme-color);
+  color: var(--f7-button-fill-text-color);
 }
