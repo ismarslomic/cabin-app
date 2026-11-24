@@ -41,6 +41,22 @@ export interface DraftGuest {
   toDate: string | null
 }
 
+/** Whether two guest lists have the same guests, in the same order, with the same own dates. */
+export function isSameGuests(a: DraftGuest[], b: DraftGuest[]): boolean {
+  return (
+    a.length === b.length &&
+    a.every((guest, index) => {
+      const other = b[index]
+      return (
+        other !== undefined &&
+        guest.guestId === other.guestId &&
+        guest.fromDate === other.fromDate &&
+        guest.toDate === other.toDate
+      )
+    })
+  )
+}
+
 /** The guest's own arrival if it is still inside the period, otherwise null (with the group). */
 function keepArrival(guest: DraftGuest, startDate: string, endDate: string): string | null {
   const { fromDate } = guest

@@ -141,6 +141,7 @@ Not used: `f7.notification` (push-style tone) and Popover (not for phones).
 - Query by role or label (`getByRole`, `getByLabelText`), not by CSS class or test id, unless there is no alternative.
 - Use `userEvent.setup()` and `await user.click(...)`, not `fireEvent`.
 - `src/test/setup.ts` registers the jest-dom matchers, cleans up after each test and stubs `window.matchMedia` (missing in jsdom, needed by Framework7).
+- **Accessible names serve the tests.** The app has about 20 known users and none has accessibility needs, so a name is not a goal in itself: it is how tests find a control by role. When a Framework7 control has no name, first try `aria-label` (it works for example on `Toggle`, where it lands on the wrapping `<label>`) or a real `<label htmlFor>` (`ListInput`, see `TimeInput` in `PeriodStep.tsx`) and check with a test query. Build a custom component only when that provably fails and the missing name would make tests clearly more complex; never assume it fails.
 - Render Framework7 trees inside `StrictMode` like `main.tsx` does (see `App.test.tsx`). Framework7 pages render asynchronously, so use `findBy*` queries.
 - **Coverage rules** (`codecov.yml`, enforced on every PR): total coverage may drop at most 2 points, and the lines a PR changes must be covered at least 80%. Check with `pnpm test:coverage` before opening a PR. The generated `src/shared/api/schema.ts` is excluded.
 - `src/test/setup.test.tsx` is a smoke test of the tooling itself. Keep it so a broken setup is obvious.
@@ -345,7 +346,7 @@ What is in `shared/lib/` (check here first, extend rather than duplicate):
 | `api-error.ts`   | `readApiErrorCode`: the `code` of an `ApiError` body                                                                                          |
 | `app-refresh.ts` | Registers and runs what a pull-to-refresh does                                                                                                |
 
-`shared/ui/` holds feature-agnostic components (`AppPage`, `ErrorState`, `Placeholder`, `ViewSwitcher`). Keep this table in step with the folder when you add a file.
+`shared/ui/` holds feature-agnostic components (`AppPage`, `ErrorState`, `Placeholder`, `ViewSwitcher`, and `day-picker.ts` with `openDayPicker`, a one-day calendar sheet). Keep this table in step with the folder when you add a file.
 
 The `@/` alias maps to `src/` (`vite.config.ts` and `tsconfig.app.json`), e.g. `import App from '@/app/App.tsx'`.
 

@@ -3,6 +3,7 @@ import {
   buildCreateRequest,
   defaultGuests,
   initialPeriod,
+  isSameGuests,
   isSamePeriod,
   reconcileGuestDates,
   type DraftGuest,
@@ -96,5 +97,20 @@ describe('initialPeriod', () => {
     expect(isSamePeriod(period, { ...period })).toBe(true)
     expect(isSamePeriod(period, { ...period, endDate: '2026-11-30' })).toBe(false)
     expect(isSamePeriod(period, { ...period, arrivalTime: '17:00' })).toBe(false)
+  })
+})
+
+describe('isSameGuests', () => {
+  it('is true for the same guests with the same dates', () => {
+    expect(
+      isSameGuests([guest('a'), guest('b', '2026-12-05')], [guest('a'), guest('b', '2026-12-05')]),
+    ).toBe(true)
+  })
+
+  it('is false when a guest, an order or a date differs', () => {
+    expect(isSameGuests([guest('a')], [guest('a'), guest('b')])).toBe(false)
+    expect(isSameGuests([guest('a'), guest('b')], [guest('b'), guest('a')])).toBe(false)
+    expect(isSameGuests([guest('a')], [guest('a', '2026-12-05')])).toBe(false)
+    expect(isSameGuests([guest('a')], [guest('a', null, '2026-12-05')])).toBe(false)
   })
 })

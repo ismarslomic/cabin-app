@@ -31,6 +31,7 @@ Group by feature, not by technical layer. Full rules in `README.md` ("Folder str
 - UI is Framework7 React (`framework7-react`) on top of `framework7/lite-bundle`. Use its components (`Page`, `Navbar`, `Block`, `List`, ...), not custom HTML/CSS, and check https://framework7.io/react/ for the API.
 - A page component has `<Page>` at the root and lives in `features/<name>/pages/`. Each feature exports its routes in `features/<name>/index.ts`; `app/routes.ts` collects them.
 - App parameters live in `app/f7-params.ts`. Framework7 has no locale files: set built-in Norwegian texts through component parameters.
+- **Accessible names are for the tests, not a requirement of the audience** (about 20 known users, none with accessibility needs). A control should be findable by role and name so tests stay simple (`getByRole('checkbox', { name: ... })`), no more. Try a Framework7 component first: add `aria-label`, or a real `<label htmlFor>` for inputs, and check in a test that the query works. Write a custom component to get a name only when that provably does not work _and_ a name-less control would make tests clearly harder; say why in a comment. Never write a custom replacement for a Framework7 component on an assumption.
 - Tests that render Framework7 need `matchMedia` (stubbed in `src/test/setup.ts`), `StrictMode`, and async `findBy*` queries.
 
 ## PWA

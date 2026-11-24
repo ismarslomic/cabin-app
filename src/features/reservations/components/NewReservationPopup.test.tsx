@@ -3,6 +3,8 @@ import userEvent from '@testing-library/user-event'
 import { f7 } from 'framework7-react'
 import { useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { resetProfileStore } from '@/features/profile/api/profile-store.ts'
+import { resetGuestsCache } from '@/features/reservations/api/guests-api.ts'
 import { reloadForLogin, SessionExpiredError } from '@/shared/lib/http.ts'
 import NewReservationPopup from '@/features/reservations/components/NewReservationPopup.tsx'
 import { renderWithF7 } from '@/test/render-f7.tsx'
@@ -13,6 +15,9 @@ vi.mock('@/shared/lib/http.ts', async (importOriginal) => ({
 }))
 
 const fetchMock = vi.fn()
+
+// The flow's own popup; the guest detail popup is nested in its page.
+const flowPopup = '.framework7-root > .popup'
 
 /** An existing reservation: the first and the last day of the stay (UTC dates). */
 const reservation = (first: string, last: string) => ({
@@ -27,8 +32,34 @@ function calendarDay(dataDate: string): HTMLElement {
   return day
 }
 
-function stubReservations(reservations: unknown[] = []) {
-  fetchMock.mockImplementation(() => Promise.resolve(Response.json(reservations)))
+const guest = (id: string, firstName: string, isFamily: boolean) => ({
+  id,
+  firstName,
+  lastName: 'Test',
+  isFamily,
+})
+
+// Ola and Kari are family; Per (the current user) and Siri are not.
+const allGuests = [
+  guest('kari', 'Kari', true),
+  guest('ola', 'Ola', true),
+  guest('per', 'Per', false),
+  guest('siri', 'Siri', false),
+]
+
+interface Stub {
+  reservations?: unknown[]
+  guests?: unknown[]
+}
+
+// Answers by URL; a new Response per call (StrictMode runs effects twice).
+function stubReservations({ reservations = [], guests = allGuests }: Stub = {}) {
+  fetchMock.mockImplementation((url: string) => {
+    if (url.startsWith('/api/reservations')) return Promise.resolve(Response.json(reservations))
+    if (url === '/api/guests') return Promise.resolve(Response.json(guests))
+    if (url === '/api/me') return Promise.resolve(Response.json({ id: 'per', role: 'FAMILY_USER' }))
+    return Promise.resolve(new Response(null, { status: 404 }))
+  })
   vi.stubGlobal('fetch', fetchMock)
 }
 
@@ -70,6 +101,8 @@ describe('NewReservationPopup', () => {
   afterEach(() => {
     vi.useRealTimers()
     fetchMock.mockReset()
+    resetGuestsCache()
+    resetProfileStore()
     vi.mocked(reloadForLogin).mockReset()
   })
 
@@ -83,7 +116,10 @@ describe('NewReservationPopup', () => {
     expect(screen.getByLabelText('Ankomst kl.')).toHaveValue('16:00')
     expect(screen.getByLabelText('Avreise kl.')).toHaveValue('13:00')
     expect(screen.getByRole('link', { name: 'Kommende helg' })).toHaveClass('button-active')
-    expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/reservations?from=2026-11-23&to=2028-11-24')
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/reservations?from=2026-11-23&to=2028-11-24',
+      expect.anything(),
+    )
   })
 
   it('picks the weekend after with a quick pick', async () => {
@@ -154,7 +190,7 @@ describe('NewReservationPopup', () => {
   })
 
   it('disables fully booked days in the calendar, but not the handover days', async () => {
-    stubReservations([reservation('2026-12-10', '2026-12-14')])
+    stubReservations({ reservations: [reservation('2026-12-10', '2026-12-14')] })
     const user = userEvent.setup()
     renderPopup()
 
@@ -168,7 +204,7 @@ describe('NewReservationPopup', () => {
   })
 
   it('warns when the period overlaps a reservation and blocks "Neste"', async () => {
-    stubReservations([reservation('2026-11-26', '2026-11-30')])
+    stubReservations({ reservations: [reservation('2026-11-26', '2026-11-30')] })
     renderPopup()
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
@@ -178,7 +214,7 @@ describe('NewReservationPopup', () => {
   })
 
   it('allows a same-day handover', async () => {
-    stubReservations([reservation('2026-11-25', '2026-11-27')])
+    stubReservations({ reservations: [reservation('2026-11-25', '2026-11-27')] })
     renderPopup()
 
     await screen.findByText('2 netter')
@@ -205,10 +241,124 @@ describe('NewReservationPopup', () => {
     renderPopup()
 
     await user.click(await screen.findByRole('link', { name: 'Neste' }))
-    expect(screen.getByText('Gjester', { selector: '.block-title' })).toBeInTheDocument()
+    expect(screen.getByText('Gjester (3)')).toBeInTheDocument()
 
     await user.click(screen.getByRole('link', { name: 'Tilbake' }))
     expect(screen.getByRole('link', { name: 'Kommende helg' })).toBeInTheDocument()
+  })
+
+  describe('guests step', () => {
+    async function openGuests() {
+      const user = userEvent.setup()
+      renderPopup()
+      await user.click(await screen.findByRole('link', { name: 'Neste' }))
+      return user
+    }
+
+    it('starts with the family and the current user', async () => {
+      stubReservations()
+      await openGuests()
+
+      expect(screen.getByText('Kari Test')).toBeInTheDocument()
+      expect(screen.getByText('Ola Test')).toBeInTheDocument()
+      expect(screen.getByText('Per Test')).toBeInTheDocument()
+      expect(screen.queryByText('Siri Test')).not.toBeInTheDocument()
+    })
+
+    it('adds guests from the picker, grouped, and adds nothing on "Avbryt"', async () => {
+      stubReservations()
+      const user = await openGuests()
+
+      await user.click(screen.getByText('Legg til gjest'))
+      expect(await screen.findByText('Andre')).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'Legg til valgte (0)' })).toHaveClass('disabled')
+
+      await user.click(screen.getByRole('checkbox', { name: 'Siri Test' }))
+      await user.click(screen.getByRole('link', { name: 'Legg til valgte (1)' }))
+
+      expect(screen.getByText('Gjester (4)')).toBeInTheDocument()
+      expect(screen.getByText('Alle gjestene er allerede lagt til.')).toBeInTheDocument()
+    })
+
+    it('filters the picker by name', async () => {
+      stubReservations({ guests: [...allGuests, guest('anne', 'Anne', false)] })
+      const user = await openGuests()
+
+      await user.click(screen.getByText('Legg til gjest'))
+      await user.type(await screen.findByRole('searchbox'), 'ann')
+
+      expect(screen.getByRole('checkbox', { name: 'Anne Test' })).toBeInTheDocument()
+      expect(screen.queryByRole('checkbox', { name: 'Siri Test' })).not.toBeInTheDocument()
+
+      await user.clear(screen.getByRole('searchbox'))
+      await user.type(screen.getByRole('searchbox'), 'zzz')
+      expect(screen.getByText('Ingen gjester funnet.')).toBeInTheDocument()
+    })
+
+    it('removes a guest from the detail view, but never the last one', async () => {
+      stubReservations({ guests: [guest('per', 'Per', false)] })
+      const user = await openGuests()
+
+      await user.click(screen.getByText('Per Test'))
+      expect(screen.getByRole('link', { name: 'Slett gjest fra reservasjon' })).toHaveClass(
+        'disabled',
+      )
+      expect(screen.getByText('En reservasjon må ha minst én gjest.')).toBeInTheDocument()
+    })
+
+    it('removes a guest with the delete button in the detail view', async () => {
+      stubReservations()
+      const user = await openGuests()
+
+      await user.click(screen.getByText('Ola Test'))
+      await user.click(screen.getByRole('link', { name: 'Slett gjest fra reservasjon' }))
+
+      expect(screen.getByText('Gjester (2)')).toBeInTheDocument()
+      expect(screen.queryByText('Ola Test')).not.toBeInTheDocument()
+    })
+
+    it('gives a guest own dates inside the stay', async () => {
+      stubReservations()
+      const user = await openGuests()
+
+      await user.click(screen.getByText('Ola Test'))
+      await user.click(screen.getByRole('checkbox', { name: 'Egen ankomst' }))
+      await user.click(screen.getByText('Ankomstdato'))
+      // 27-29 November; the calendar counts months from 0.
+      await user.click(calendarDay('2026-10-28'))
+
+      expect(await screen.findByText('Ankomst lør 28. nov.')).toBeInTheDocument()
+      await user.click(screen.getByRole('checkbox', { name: 'Egen avreise' }))
+      expect(screen.getAllByText('søn 29. nov.').length).toBeGreaterThan(0)
+    })
+
+    it('resets own dates that do not fit a new period and says so', async () => {
+      stubReservations()
+      const user = await openGuests()
+      await user.click(screen.getByText('Ola Test'))
+      await user.click(screen.getByRole('checkbox', { name: 'Egen ankomst' }))
+      await user.click(screen.getByText('Ankomstdato'))
+      await user.click(calendarDay('2026-10-28'))
+      await screen.findByText('Ankomst lør 28. nov.')
+
+      await user.click(screen.getByRole('link', { name: 'Tilbake' }))
+      await user.click(screen.getByRole('link', { name: 'Neste helg' }))
+      await user.click(screen.getByRole('link', { name: 'Neste' }))
+
+      expect(screen.queryByText('Ankomst lør 28. nov.')).not.toBeInTheDocument()
+      expect(screen.getByRole('status')).toHaveTextContent('Egne datoer ble nullstilt')
+    })
+
+    it('asks before throwing away a changed guest list', async () => {
+      stubReservations()
+      const user = await openGuests()
+
+      await user.click(screen.getByText('Ola Test'))
+      await user.click(screen.getByRole('link', { name: 'Slett gjest fra reservasjon' }))
+      await user.click(screen.getByRole('link', { name: 'Avbryt' }))
+
+      expect(await screen.findByText('Forkast reservasjonen?')).toBeInTheDocument()
+    })
   })
 
   it('closes at once on "Avbryt" when nothing was changed', async () => {
@@ -216,7 +366,8 @@ describe('NewReservationPopup', () => {
     const user = userEvent.setup()
     const onClose = renderPopup()
 
-    await user.click(await screen.findByRole('link', { name: 'Avbryt' }))
+    await screen.findByText('2 netter')
+    await user.click(screen.getByRole('link', { name: 'Avbryt' }))
 
     expect(onClose).toHaveBeenCalledOnce()
   })
@@ -258,7 +409,10 @@ describe('NewReservationPopup', () => {
     await user.click(screen.getByRole('button', { name: 'Åpne' }))
 
     expect(await screen.findByText('fre 4. des.')).toBeInTheDocument()
-    expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/reservations?from=2026-12-01&to=2028-12-02')
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/reservations?from=2026-12-01&to=2028-12-02',
+      expect.anything(),
+    )
   })
 
   it('tells the parent when the popup is closed by something else', async () => {
@@ -267,11 +421,11 @@ describe('NewReservationPopup', () => {
     await screen.findByText('2 netter')
 
     act(() => {
-      f7.popup.close('.popup')
+      f7.popup.close(flowPopup)
     })
     // jsdom has no CSS transitions: finish the closing animation by hand.
     act(() => {
-      document.querySelector('.popup')?.dispatchEvent(new Event('transitionend'))
+      document.querySelector(flowPopup)?.dispatchEvent(new Event('transitionend'))
     })
 
     await waitFor(() => {
@@ -290,11 +444,29 @@ describe('NewReservationPopup', () => {
     const user = userEvent.setup()
     renderPopup()
 
-    expect(await screen.findByText('Kunne ikke hente reservasjonene.')).toBeInTheDocument()
+    expect(await screen.findByText('Kunne ikke hente data til reservasjonen.')).toBeInTheDocument()
     failing = false
     await user.click(screen.getByRole('link', { name: 'Prøv igjen' }))
 
     expect(await screen.findByText('2 netter')).toBeInTheDocument()
+  })
+
+  it('says so and closes when the user may not create reservations', async () => {
+    fetchMock.mockImplementation((url: string) =>
+      Promise.resolve(
+        url === '/api/me'
+          ? Response.json({ id: 'per', role: 'GUEST_USER' })
+          : Response.json({ code: 'FORBIDDEN', message: 'x' }, { status: 403 }),
+      ),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    const user = userEvent.setup()
+    const onClose = renderPopup()
+
+    expect(await screen.findByText('Du har ikke tilgang til appen.')).toBeInTheDocument()
+    await user.click(screen.getByText('OK'))
+
+    expect(onClose).toHaveBeenCalledOnce()
   })
 
   it('reloads the page for the login when the session has expired', async () => {
