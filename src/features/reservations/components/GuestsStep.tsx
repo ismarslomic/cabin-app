@@ -60,10 +60,11 @@ export default function GuestsStep({
         </div>
       )}
       <List strong inset dividersIos>
-        {draftGuests.map((draftGuest) => {
+        {/* flatMap: Framework7's `List` cannot handle a null child, so a missing guest gives no element. */}
+        {draftGuests.flatMap((draftGuest) => {
           const guest = byId.get(draftGuest.guestId)
-          if (!guest) return null
-          return (
+          if (!guest) return []
+          return [
             <ListItem
               key={draftGuest.guestId}
               link="#"
@@ -89,8 +90,8 @@ export default function GuestsStep({
                   </SwipeoutButton>
                 </SwipeoutActions>
               )}
-            </ListItem>
-          )
+            </ListItem>,
+          ]
         })}
         <ListItem
           link="#"

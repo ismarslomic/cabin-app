@@ -30,7 +30,7 @@ interface GuestDetailProps {
   onClose: () => void
 }
 
-interface OwnDayProps {
+interface OwnDayOptions {
   switchLabel: string
   dateLabel: string
   today: string
@@ -43,8 +43,10 @@ interface OwnDayProps {
   onChange: (day: string | null) => void
 }
 
-// A switch for an own arrival or departure and, when it is on, the row that picks the day.
-function OwnDay({
+// A switch for an own arrival or departure and, when it is on, the row that picks the day. These
+// are list items returned from a function, not a component: Framework7's `List` puts only
+// `ListItem` elements inside its <ul>, so a wrapper component would end up outside the card.
+function ownDayItems({
   switchLabel,
   dateLabel,
   today,
@@ -53,32 +55,34 @@ function OwnDay({
   min,
   max,
   onChange,
-}: OwnDayProps) {
-  return (
-    <>
-      <ListItem title={switchLabel}>
-        <Toggle
-          slot="after"
-          aria-label={switchLabel}
-          checked={value !== null}
-          // The input is controlled, so `event.target.checked` is already reset here: flip the state.
-          onChange={() => {
-            onChange(value === null ? defaultValue : null)
-          }}
-        />
-      </ListItem>
-      {value !== null && (
-        <ListItem
-          link="#"
-          title={dateLabel}
-          after={formatDate(value, today)}
-          onClick={() => {
-            openDayPicker({ value, min, max, onPick: onChange })
-          }}
-        />
-      )}
-    </>
-  )
+}: OwnDayOptions) {
+  const items = [
+    <ListItem key="switch" title={switchLabel}>
+      <Toggle
+        slot="after"
+        aria-label={switchLabel}
+        checked={value !== null}
+        // The input is controlled, so `event.target.checked` is already reset here: flip the state.
+        onChange={() => {
+          onChange(value === null ? defaultValue : null)
+        }}
+      />
+    </ListItem>,
+  ]
+  if (value !== null) {
+    items.push(
+      <ListItem
+        key="date"
+        link="#"
+        title={dateLabel}
+        after={formatDate(value, today)}
+        onClick={() => {
+          openDayPicker({ value, min, max, onPick: onChange })
+        }}
+      />,
+    )
+  }
+  return items
 }
 
 // The guest's own arrival and departure, inside the reservation's period.
@@ -108,30 +112,30 @@ export default function GuestDetail({
               <Avatar guestId={guest.id} size={72} />
             </Block>
             <List strong inset dividersIos>
-              <OwnDay
-                switchLabel="Egen ankomst"
-                dateLabel="Ankomstdato"
-                today={today}
-                value={draftGuest.fromDate}
-                defaultValue={startDate}
-                min={startDate}
-                max={draftGuest.toDate ?? endDate}
-                onChange={(fromDate) => {
+              {ownDayItems({
+                switchLabel: 'Egen ankomst',
+                dateLabel: 'Ankomstdato',
+                today,
+                value: draftGuest.fromDate,
+                defaultValue: startDate,
+                min: startDate,
+                max: draftGuest.toDate ?? endDate,
+                onChange: (fromDate) => {
                   onChange({ ...draftGuest, fromDate })
-                }}
-              />
-              <OwnDay
-                switchLabel="Egen avreise"
-                dateLabel="Avreisedato"
-                today={today}
-                value={draftGuest.toDate}
-                defaultValue={endDate}
-                min={draftGuest.fromDate ?? startDate}
-                max={endDate}
-                onChange={(toDate) => {
+                },
+              })}
+              {ownDayItems({
+                switchLabel: 'Egen avreise',
+                dateLabel: 'Avreisedato',
+                today,
+                value: draftGuest.toDate,
+                defaultValue: endDate,
+                min: draftGuest.fromDate ?? startDate,
+                max: endDate,
+                onChange: (toDate) => {
                   onChange({ ...draftGuest, toDate })
-                }}
-              />
+                },
+              })}
             </List>
             <Block>
               Uten egne datoer er gjesten med hele oppholdet:{' '}

@@ -134,6 +134,20 @@ describe('NewReservationPopup', () => {
     )
   })
 
+  it('shows the times as rows inside the same card as the dates', async () => {
+    stubReservations()
+    renderPopup()
+
+    const arrival = await screen.findByLabelText('Ankomst kl.')
+
+    // A row outside the list's <ul> would have no card and show list bullets.
+    expect(arrival.closest('.list ul')).toBeInTheDocument()
+    expect(screen.getByText('Start').closest('.list ul')).toBe(arrival.closest('.list ul'))
+    expect(screen.getByLabelText('Avreise kl.').closest('.list ul')).toBe(
+      arrival.closest('.list ul'),
+    )
+  })
+
   it('picks the weekend after with a quick pick', async () => {
     stubReservations()
     const user = userEvent.setup()
@@ -247,6 +261,20 @@ describe('NewReservationPopup', () => {
     expect(screen.getByRole('link', { name: 'Neste' })).toHaveClass('disabled')
   })
 
+  it('shows the period problem before a time problem, and marks the time field', async () => {
+    stubReservations({ reservations: [reservation('2026-11-26', '2026-11-30')] })
+    const user = userEvent.setup()
+    renderPopup()
+
+    const arrival = await screen.findByLabelText('Ankomst kl.')
+    await user.clear(arrival)
+    await user.type(arrival, '01:30')
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Perioden overlapper en annen reservasjon.')
+    expect(arrival).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByLabelText('Avreise kl.')).toHaveAttribute('aria-invalid', 'false')
+  })
+
   it('goes to the guests step and back', async () => {
     stubReservations()
     const user = userEvent.setup()
@@ -327,6 +355,22 @@ describe('NewReservationPopup', () => {
 
       expect(screen.getByText('Gjester (2)')).toBeInTheDocument()
       expect(screen.queryByText('Ola Test')).not.toBeInTheDocument()
+    })
+
+    it('shows the own-date switches inside the list of the guest detail', async () => {
+      stubReservations()
+      const user = await openGuests()
+
+      await user.click(screen.getByText('Ola Test'))
+
+      const arrival = screen.getByRole('checkbox', { name: 'Egen ankomst' })
+      expect(arrival.closest('.list ul')).toBeInTheDocument()
+      expect(screen.getByRole('checkbox', { name: 'Egen avreise' }).closest('.list ul')).toBe(
+        arrival.closest('.list ul'),
+      )
+      // The date row that appears when the switch is on is in the same list too.
+      await user.click(arrival)
+      expect(screen.getByText('Ankomstdato').closest('.list ul')).toBe(arrival.closest('.list ul'))
     })
 
     it('gives a guest own dates inside the stay', async () => {

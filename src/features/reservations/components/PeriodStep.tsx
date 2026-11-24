@@ -1,13 +1,5 @@
-import {
-  Block,
-  BlockTitle,
-  Button,
-  f7,
-  List,
-  ListInput,
-  ListItem,
-  Segmented,
-} from 'framework7-react'
+import { Block, BlockTitle, Button, f7, List, ListItem, Segmented } from 'framework7-react'
+import '@/features/reservations/components/PeriodStep.css'
 import { type PeriodProblem, periodProblemTexts } from '@/features/reservations/api/error-texts.ts'
 import type { Reservation } from '@/features/reservations/api/types.ts'
 import type { DraftPeriod } from '@/features/reservations/lib/draft.ts'
@@ -39,31 +31,35 @@ interface PeriodStepProps {
 
 const timeError = `Velg et tidspunkt mellom ${MIN_TIME_OSLO} og 23:59.`
 
-interface TimeInputProps {
+interface TimeInputOptions {
   id: string
   label: string
   value: string
   onChange: (time: string) => void
 }
 
-// A time field with a real <label>, so the input has an accessible name.
-function TimeInput({ id, label, value, onChange }: TimeInputProps) {
+// A time row, laid out like the date rows: the label as the title, the time on the right. It has a
+// real <label>, so the input has an accessible name. This is a function that returns the element,
+// not a component: Framework7's `List` puts only `ListItem` and `ListInput` elements inside its
+// <ul>, so a wrapper component would end up outside the card (with list bullets).
+function renderTimeInput({ id, label, value, onChange }: TimeInputOptions) {
   return (
-    <ListInput
-      inputId={id}
-      type="time"
-      value={value}
-      min={MIN_TIME_OSLO}
-      errorMessage={timeError}
-      errorMessageForce={!isAllowedTime(value)}
-      onChange={(event) => {
-        onChange((event.target as HTMLInputElement).value)
-      }}
-    >
-      <label slot="label" htmlFor={id}>
+    <ListItem className="period-time">
+      <label slot="title" htmlFor={id}>
         {label}
       </label>
-    </ListInput>
+      <input
+        slot="after"
+        id={id}
+        type="time"
+        value={value}
+        min={MIN_TIME_OSLO}
+        aria-invalid={!isAllowedTime(value)}
+        onChange={(event) => {
+          onChange(event.target.value)
+        }}
+      />
+    </ListItem>
   )
 }
 
@@ -80,6 +76,8 @@ export default function PeriodStep({
   const picks = quickPicks(today)
   const problem = periodProblem(startDate, endDate, today, reservations) ?? serverProblem
   const timesValid = isAllowedTime(arrivalTime) && isAllowedTime(departureTime)
+  // One message at a time: the period problem first, then a time that is not allowed.
+  const message = problem ? periodProblemTexts[problem] : timesValid ? undefined : timeError
 
   const openCalendar = () => {
     const calendar = f7.calendar.create({
@@ -143,29 +141,29 @@ export default function PeriodStep({
           after={formatDate(endDate, today)}
           onClick={openCalendar}
         />
-        <TimeInput
-          id="reservation-arrival-time"
-          label="Ankomst kl."
-          value={arrivalTime}
-          onChange={(time) => {
+        {renderTimeInput({
+          id: 'reservation-arrival-time',
+          label: 'Ankomst kl.',
+          value: arrivalTime,
+          onChange: (time) => {
             onChange({ ...period, arrivalTime: time })
-          }}
-        />
-        <TimeInput
-          id="reservation-departure-time"
-          label="Avreise kl."
-          value={departureTime}
-          onChange={(time) => {
+          },
+        })}
+        {renderTimeInput({
+          id: 'reservation-departure-time',
+          label: 'Avreise kl.',
+          value: departureTime,
+          onChange: (time) => {
             onChange({ ...period, departureTime: time })
-          }}
-        />
+          },
+        })}
         {!problem && (
           <ListItem title="Varighet" after={nightsLabel(nightsBetween(startDate, endDate))} />
         )}
       </List>
-      {problem && (
+      {message && (
         <div role="alert">
-          <Block className="text-color-red">{periodProblemTexts[problem]}</Block>
+          <Block className="text-color-red">{message}</Block>
         </div>
       )}
       <Block>

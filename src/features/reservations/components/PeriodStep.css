@@ -1,0 +1,8 @@
+/* The time on the right, like the values of the date rows. */
+.period-time input {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: right;
+}

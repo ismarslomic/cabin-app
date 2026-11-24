@@ -5,6 +5,9 @@
  * Overrides Framework7's iOS defaults.
  */
 :root {
+  /* Native form controls (the clock of a time field, scrollbars) follow the theme. */
+  color-scheme: light;
+
   --f7-theme-color: #0a66c9;
   --f7-theme-color-rgb: 10, 102, 201;
   --f7-theme-color-shade: #0857ab;
@@ -31,6 +34,8 @@
 }
 
 .ios.dark {
+  color-scheme: dark;
+
   --f7-theme-color: #5ea9ff;
   --f7-theme-color-rgb: 94, 169, 255;
   --f7-theme-color-shade: #5090d9;
