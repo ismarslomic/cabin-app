@@ -1,15 +1,16 @@
 import {
   Block,
   BlockTitle,
-  Button,
   List,
   ListItem,
   PageContent,
+  Link,
   Searchbar,
   Sheet,
-  Toolbar,
 } from 'framework7-react'
-import { useState } from 'react'
+import { Check, X } from 'lucide-react'
+import { type ChangeEvent, useState } from 'react'
+import '@/features/reservations/components/GuestPicker.css'
 import { Avatar } from '@/features/profile/index.ts'
 import type { Guest } from '@/features/reservations/api/types.ts'
 import { filterGuests, groupGuests, guestName } from '@/features/reservations/lib/guests.ts'
@@ -54,7 +55,7 @@ function GuestGroup({ title, guests, selected, full, onToggle }: GuestGroupProps
               }}
             >
               <span slot="media">
-                <Avatar guestId={guest.id} size={32} />
+                <Avatar avatarUrl={guest.avatarUrl} size={32} />
               </span>
             </ListItem>
           )
@@ -93,9 +94,8 @@ export default function GuestPicker({ opened, available, room, onAdd, onClose }:
   return (
     <Sheet
       opened={opened}
-      swipeToClose
       backdrop
-      style={{ height: '85%' }}
+      className="guest-picker"
       onSheetClosed={() => {
         setMounted(false)
         // Closed by a swipe: tell the parent.
@@ -103,50 +103,63 @@ export default function GuestPicker({ opened, available, room, onAdd, onClose }:
       }}
     >
       {mounted && (
-        <>
-          <Toolbar top>
-            <Button onClick={onClose}>Avbryt</Button>
-            <Button
-              disabled={selected.length === 0}
-              onClick={() => {
-                onAdd(selected)
-              }}
-            >
-              Legg til valgte ({selected.length})
-            </Button>
-          </Toolbar>
-          <PageContent>
+        <PageContent>
+          {/* The header and the search stay in place while the list scrolls under them. */}
+          <div className="guest-picker-top">
+            <div className="guest-picker-header">
+              <Link iconOnly aria-label="Lukk" className="guest-picker-button" onClick={onClose}>
+                <X size={22} aria-hidden="true" />
+              </Link>
+              <div className="guest-picker-title">
+                <strong>Velg gjester</strong>
+                <span>{selected.length === 0 ? 'Ingen valgt' : `${selected.length} valgt`}</span>
+              </div>
+              <Link
+                iconOnly
+                aria-label="Legg til valgte"
+                className={
+                  selected.length === 0
+                    ? 'guest-picker-button guest-picker-confirm disabled'
+                    : 'guest-picker-button guest-picker-confirm'
+                }
+                onClick={() => {
+                  if (selected.length > 0) onAdd(selected)
+                }}
+              >
+                <Check size={24} aria-hidden="true" />
+              </Link>
+            </div>
             <Searchbar
               customSearch
               placeholder="Søk etter gjest"
               clearButton
               disableButton={false}
               value={query}
-              onInput={(event: React.ChangeEvent<HTMLInputElement>) => {
+              onInput={(event: ChangeEvent<HTMLInputElement>) => {
                 setQuery(event.target.value)
               }}
               onSearchbarClear={() => {
                 setQuery('')
               }}
             />
-            {available.length === 0 && <Block>Alle gjestene er allerede lagt til.</Block>}
-            {available.length > 0 && shown.length === 0 && <Block>Ingen gjester funnet.</Block>}
-            <GuestGroup
-              title="Familie"
-              guests={family}
-              selected={selected}
-              full={full}
-              onToggle={toggle}
-            />
-            <GuestGroup
-              title="Andre"
-              guests={others}
-              selected={selected}
-              full={full}
-              onToggle={toggle}
-            />
-          </PageContent>
-        </>
+          </div>
+          {available.length === 0 && <Block>Alle gjestene er allerede lagt til.</Block>}
+          {available.length > 0 && shown.length === 0 && <Block>Ingen gjester funnet.</Block>}
+          <GuestGroup
+            title="Familie"
+            guests={family}
+            selected={selected}
+            full={full}
+            onToggle={toggle}
+          />
+          <GuestGroup
+            title="Andre"
+            guests={others}
+            selected={selected}
+            full={full}
+            onToggle={toggle}
+          />
+        </PageContent>
       )}
     </Sheet>
   )

@@ -1,6 +1,6 @@
 import type { Failure } from '@/shared/lib/api-error.ts'
 
-/** Problems with the chosen period. They are fixed on the period step. */
+/** Problems with the chosen period. They are fixed in the period section. */
 export type PeriodProblem = 'END_BEFORE_START' | 'TOO_LONG' | 'TOO_FAR_AHEAD' | 'OVERLAP'
 
 export const periodProblemTexts: Record<PeriodProblem, string> = {
@@ -15,9 +15,9 @@ export const periodProblemTexts: Record<PeriodProblem, string> = {
  * access, no network: see `handleCommonFailure`).
  */
 export type CreateFailure =
-  /** Fixed on the period step. */
+  /** Fixed in the period section. */
   | { kind: 'period'; problem: PeriodProblem }
-  /** Shown inline above the submit button. */
+  /** Shown inline under the guest list. */
   | { kind: 'inline'; text: string }
 
 const generalText = 'Kunne ikke opprette reservasjonen. Prøv igjen.'

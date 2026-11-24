@@ -60,12 +60,12 @@ describe('profile api', () => {
     ).rejects.toEqual(new ApiRequestError(status, code))
   })
 
-  it('returns null for a guest without avatar', async () => {
+  it('returns null when the avatar image is not found', async () => {
     fetchMock.mockResolvedValue(new Response(null, { status: 404 }))
     vi.stubGlobal('fetch', fetchMock)
 
-    await expect(fetchAvatarUrl('g1')).resolves.toBeNull()
-    expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/guests/g1/avatar')
+    await expect(fetchAvatarUrl('/api/guests/g1/avatar?v=3')).resolves.toBeNull()
+    expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/guests/g1/avatar?v=3')
   })
 
   it('turns the avatar image into a blob URL', async () => {
@@ -73,6 +73,6 @@ describe('profile api', () => {
     vi.stubGlobal('fetch', fetchMock)
     vi.stubGlobal('URL', Object.assign(URL, { createObjectURL: () => 'blob:avatar' }))
 
-    await expect(fetchAvatarUrl('g1')).resolves.toBe('blob:avatar')
+    await expect(fetchAvatarUrl('/api/guests/g1/avatar?v=3')).resolves.toBe('blob:avatar')
   })
 })

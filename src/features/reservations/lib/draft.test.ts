@@ -4,6 +4,7 @@ import {
   defaultGuests,
   initialPeriod,
   isSameGuests,
+  normalizeGuestDates,
   isSamePeriod,
   reconcileGuestDates,
   type DraftGuest,
@@ -16,7 +17,7 @@ describe('reconcileGuestDates', () => {
   it('keeps dates that still fit', () => {
     const guests = [guest('a', '2026-12-05', '2026-12-06')]
     const result = reconcileGuestDates(guests, '2026-12-04', '2026-12-07')
-    expect(result).toEqual({ guests, reset: 0 })
+    expect(result).toEqual({ guests, resetGuestIds: [] })
   })
 
   it('resets only the dates that no longer fit', () => {
@@ -26,11 +27,21 @@ describe('reconcileGuestDates', () => {
       '2026-12-07',
     )
     expect(result.guests).toEqual([
-      guest('a', '2026-12-05', '2026-12-06'),
+      // Its own arrival is now the first day of the period: the same as none.
+      guest('a', null, '2026-12-06'),
       guest('b', null, null),
       guest('c'),
     ])
-    expect(result.reset).toBe(1)
+    expect(result.resetGuestIds).toEqual(['b'])
+  })
+
+  it('stores an own date that now equals the period as none, without counting it as a reset', () => {
+    const result = reconcileGuestDates(
+      [guest('a', '2026-12-05', '2026-12-07')],
+      '2026-12-05',
+      '2026-12-07',
+    )
+    expect(result).toEqual({ guests: [guest('a')], resetGuestIds: [] })
   })
 
   it('resets a departure before the kept arrival', () => {
@@ -40,7 +51,7 @@ describe('reconcileGuestDates', () => {
       '2026-12-08',
     )
     expect(result.guests[0]).toEqual(guest('a', '2026-12-06', null))
-    expect(result.reset).toBe(1)
+    expect(result.resetGuestIds).toEqual(['a'])
   })
 })
 
@@ -112,5 +123,33 @@ describe('isSameGuests', () => {
     expect(isSameGuests([guest('a'), guest('b')], [guest('b'), guest('a')])).toBe(false)
     expect(isSameGuests([guest('a')], [guest('a', '2026-12-05')])).toBe(false)
     expect(isSameGuests([guest('a')], [guest('a', null, '2026-12-05')])).toBe(false)
+  })
+})
+
+describe('normalizeGuestDates', () => {
+  const period = {
+    startDate: '2026-11-27',
+    endDate: '2026-11-29',
+    arrivalTime: '16:00',
+    departureTime: '13:00',
+  }
+
+  it("sets an own date equal to the reservation's back to null", () => {
+    expect(normalizeGuestDates(guest('a', '2026-11-27', '2026-11-29'), period)).toEqual(guest('a'))
+  })
+
+  it('keeps own dates that differ, each on its own', () => {
+    expect(normalizeGuestDates(guest('a', '2026-11-28', '2026-11-29'), period)).toEqual(
+      guest('a', '2026-11-28', null),
+    )
+    expect(normalizeGuestDates(guest('a', '2026-11-27', '2026-11-28'), period)).toEqual(
+      guest('a', null, '2026-11-28'),
+    )
+  })
+
+  it('does not mix the days up: an own departure on the first day stays', () => {
+    expect(normalizeGuestDates(guest('a', null, '2026-11-27'), period)).toEqual(
+      guest('a', null, '2026-11-27'),
+    )
   })
 })

@@ -55,3 +55,26 @@ export function guestDatesText(guest: DraftGuest, period: DraftPeriod, today: st
   }
   return parts.join(' · ')
 }
+
+/** Names in a sentence: "A", "A og B", "A, B og C". */
+function joinNames(names: string[]): string {
+  const last = names.at(-1) ?? ''
+  return names.length < 2 ? last : `${names.slice(0, -1).join(', ')} og ${last}`
+}
+
+/** Up to this many guests are named in the note about reset dates; more are only counted. */
+const MAX_NAMED = 3
+
+/**
+ * The note under the guest list when a new period removed some guests' own dates: who, why and what
+ * it means. Empty when no guest was affected.
+ *
+ * @example
+ * resetDatesText(['Ola Nordmann']) // 'Egne datoer er fjernet for Ola Nordmann fordi de ikke ...'
+ */
+export function resetDatesText(names: string[]): string {
+  if (names.length === 0) return ''
+  const who = names.length > MAX_NAMED ? `${names.length} gjester` : joinNames(names)
+  const follow = names.length === 1 ? 'Gjesten følger' : 'Gjestene følger'
+  return `Egne datoer er fjernet for ${who} fordi de ikke passer i den nye perioden. ${follow} nå hele oppholdet.`
+}

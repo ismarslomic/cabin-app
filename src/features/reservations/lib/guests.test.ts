@@ -8,6 +8,7 @@ import {
   guestDatesText,
   guestName,
   guestsToAdd,
+  resetDatesText,
 } from '@/features/reservations/lib/guests.ts'
 
 const guest = (id: string, firstName: string, lastName: string, isFamily = false) =>
@@ -67,6 +68,28 @@ describe('guest helpers', () => {
       expect(guestDatesText(draft('2026-11-28', '2026-11-28'), period, today)).toBe(
         'Ankomst lør 28. nov. · Avreise lør 28. nov.',
       )
+    })
+  })
+
+  describe('resetDatesText', () => {
+    it('is empty when no guest was affected', () => {
+      expect(resetDatesText([])).toBe('')
+    })
+
+    it('names one guest and says the guest follows the stay', () => {
+      expect(resetDatesText(['Ola Nordmann'])).toBe(
+        'Egne datoer er fjernet for Ola Nordmann fordi de ikke passer i den nye perioden. Gjesten følger nå hele oppholdet.',
+      )
+    })
+
+    it('names two or three guests in a sentence', () => {
+      expect(resetDatesText(['A', 'B'])).toContain('for A og B fordi')
+      expect(resetDatesText(['A', 'B', 'C'])).toContain('for A, B og C fordi')
+      expect(resetDatesText(['A', 'B'])).toContain('Gjestene følger nå hele oppholdet.')
+    })
+
+    it('only counts the guests when there are many', () => {
+      expect(resetDatesText(['A', 'B', 'C', 'D'])).toContain('for 4 gjester fordi')
     })
   })
 })

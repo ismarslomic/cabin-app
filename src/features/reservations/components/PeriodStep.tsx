@@ -1,6 +1,8 @@
 import { Block, BlockTitle, Button, f7, List, ListItem, Segmented } from 'framework7-react'
 import { CircleAlert } from 'lucide-react'
+import { useEffect, useRef } from 'react'
 import '@/features/reservations/components/PeriodStep.css'
+import '@/shared/ui/chips.css'
 import type { Reservation } from '@/features/reservations/api/types.ts'
 import type { DraftPeriod } from '@/features/reservations/lib/draft.ts'
 import { bookedRanges, maxDate, quickPicks } from '@/features/reservations/lib/period.ts'
@@ -50,12 +52,12 @@ function renderStayRow({
 }: StayRowOptions) {
   return (
     <ListItem title={title}>
-      <div slot="after" className="period-chips">
-        <button type="button" className="period-chip" onClick={onOpenCalendar}>
+      <div slot="after" className="chips">
+        <button type="button" className="chip" onClick={onOpenCalendar}>
           {formatDate(date, today)}
         </button>
         {/* The pill is a wrapper: Framework7 resets the background of an input in a list. */}
-        <span className="period-chip period-chip-time">
+        <span className="chip period-chip-time">
           <input
             type="time"
             aria-label={timeLabel}
@@ -72,7 +74,7 @@ function renderStayRow({
   )
 }
 
-// Step 1: the days (quick picks or a range in the calendar), the times and the length of the stay.
+// The period: the days (quick picks or a range in the calendar), the times and the length of the stay.
 export default function PeriodStep({
   period,
   today,
@@ -83,6 +85,13 @@ export default function PeriodStep({
   const { startDate, endDate, arrivalTime, departureTime } = period
   const picks = quickPicks(today)
   const nights = nightsBetween(startDate, endDate)
+  // A problem that appears while the user is further down the page (for example one the server
+  // reported after "Opprett") is scrolled into view.
+  const messageRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    // `scrollIntoView` is missing in jsdom (the tests), hence the optional call.
+    if (message) messageRef.current?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' })
+  }, [message])
 
   const openCalendar = () => {
     const calendar = f7.calendar.create({
@@ -159,8 +168,8 @@ export default function PeriodStep({
         {nights >= 1 && <ListItem title="Varighet" after={nightsLabel(nights)} />}
       </List>
       {message && (
-        <div role="alert">
-          <Block className="text-color-red period-message">
+        <div role="alert" ref={messageRef}>
+          <Block className="text-color-red flow-message">
             <CircleAlert size={16} aria-hidden="true" />
             <span>{message}</span>
           </Block>

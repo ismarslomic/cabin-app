@@ -19,9 +19,13 @@ export async function updateProfile(update: ProfileUpdate, version: number): Pro
   return (await response.json()) as Profile
 }
 
-/** The avatar JPEG as a blob URL, or null when the guest has no avatar. */
-export async function fetchAvatarUrl(guestId: string): Promise<string | null> {
-  const response = await appFetch(`/api/guests/${encodeURIComponent(guestId)}/avatar`)
+/**
+ * The avatar JPEG as a blob URL. `avatarUrl` is the relative URL the API gives for a guest (it has a
+ * `v` parameter that changes with the image); a guest without an avatar has none, and then there
+ * is nothing to fetch. Null when the image is not found.
+ */
+export async function fetchAvatarUrl(avatarUrl: string): Promise<string | null> {
+  const response = await appFetch(avatarUrl)
   if (response.status === 404) return null
   await ensureOk(response)
   return URL.createObjectURL(await response.blob())

@@ -3,7 +3,6 @@ import {
   ActionsButton,
   ActionsGroup,
   ActionsLabel,
-  Block,
   Link,
   Navbar,
   NavLeft,
@@ -13,7 +12,7 @@ import {
   Popup,
   Preloader,
 } from 'framework7-react'
-import { X } from 'lucide-react'
+import { Check, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { reloadProfile, useProfile } from '@/features/profile/index.ts'
 import {
@@ -23,12 +22,13 @@ import {
 import { createReservation } from '@/features/reservations/api/reservations-api.ts'
 import type { Guest, Reservation } from '@/features/reservations/api/types.ts'
 import { useReservationFlowData } from '@/features/reservations/api/useReservationFlowData.ts'
+import FlowSkeleton from '@/features/reservations/components/FlowSkeleton.tsx'
 import GuestDetail from '@/features/reservations/components/GuestDetail.tsx'
 import GuestPicker from '@/features/reservations/components/GuestPicker.tsx'
 import GuestsStep from '@/features/reservations/components/GuestsStep.tsx'
+import '@/features/reservations/components/flow-primary.css'
 import '@/features/reservations/components/NewReservationPopup.css'
 import PeriodStep from '@/features/reservations/components/PeriodStep.tsx'
-import StepIndicator from '@/features/reservations/components/StepIndicator.tsx'
 import {
   buildCreateRequest,
   defaultGuests,
@@ -46,7 +46,7 @@ import { todayInOslo } from '@/shared/lib/dates.ts'
 import { handleCommonFailure } from '@/shared/ui/failure-feedback.ts'
 import ErrorState from '@/shared/ui/ErrorState.tsx'
 
-const STEPS = ['Periode', 'Gjester']
+const noop = () => undefined
 
 interface PrimaryAction {
   label: string
@@ -57,18 +57,15 @@ interface PrimaryAction {
 }
 
 interface FlowNavbarProps {
-  /** The reservation is being sent: going back or cancelling waits until it is done. */
+  /** The reservation is being sent: cancelling waits until it is done. */
   busy?: boolean
-  /** The step to go back from; no "Tilbake" on the first step. */
-  step: number
-  /** What the user does next ("Neste", "Opprett"), at the top right like the iOS Calendar. */
+  /** What the user does ("Opprett"), a check icon at the top right like the iOS Calendar and the profile page. `label` is its accessible name. */
   primary?: PrimaryAction
-  onBack: () => void
   onCancel: () => void
 }
 
 // Like the iOS Calendar's "new event": close on the left, the primary action on the right.
-function FlowNavbar({ busy = false, step, primary, onBack, onCancel }: FlowNavbarProps) {
+function FlowNavbar({ busy = false, primary, onCancel }: FlowNavbarProps) {
   const waiting = busy ? 'disabled' : undefined
   const primaryDisabled = primary?.disabled || primary?.busy
   return (
@@ -82,22 +79,19 @@ function FlowNavbar({ busy = false, step, primary, onBack, onCancel }: FlowNavba
         >
           <X size={22} aria-hidden="true" />
         </Link>
-        {step > 0 && (
-          <Link className={waiting} onClick={busy ? undefined : onBack}>
-            Tilbake
-          </Link>
-        )}
       </NavLeft>
       <NavTitle>Ny reservasjon</NavTitle>
       <NavRight>
         {primary && (
           <Link
+            iconOnly
             aria-label={primary.label}
             aria-busy={primary.busy}
+            aria-disabled={primaryDisabled}
             className={primaryDisabled ? 'flow-primary disabled' : 'flow-primary'}
             onClick={primaryDisabled ? undefined : primary.onClick}
           >
-            {primary.busy ? <Preloader size={18} /> : primary.label}
+            {primary.busy ? <Preloader size={18} /> : <Check size={24} aria-hidden="true" />}
           </Link>
         )}
       </NavRight>
@@ -114,7 +108,7 @@ interface DraftFlowProps {
   onClose: () => void
 }
 
-// The two steps and the draft, once everything is loaded. The draft starts from the family.
+// The period and the guests on one page, once everything is loaded. The draft starts from the family.
 function DraftFlow({
   today,
   reservations,
@@ -127,9 +121,12 @@ function DraftFlow({
   const initialGuests = useMemo(() => defaultGuests(guests, currentUserId), [guests, currentUserId])
   const [period, setPeriod] = useState(initial)
   const [draftGuests, setDraftGuests] = useState(initialGuests)
-  const [datesWereReset, setDatesWereReset] = useState(false)
-  const [step, setStep] = useState(0)
+  // The guests whose own dates a new period removed (the note on the guest list names them).
+  const [resetGuestIds, setResetGuestIds] = useState<string[]>([])
   const [openGuestId, setOpenGuestId] = useState<string | null>(null)
+  // A guest removed from the guest popup: the popup slides away first, and only then is the guest
+  // taken out, so the popup does not slide away empty.
+  const [removingGuestId, setRemovingGuestId] = useState<string | null>(null)
   const [picking, setPicking] = useState(false)
   const [confirmingCancel, setConfirmingCancel] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -153,26 +150,32 @@ function DraftFlow({
     else onClose()
   }
 
-  // Own dates that do not fit the new period are reset, and step 2 says so.
+  // Own dates that do not fit the new period are reset, and the guest list says so.
   const changePeriod = (next: DraftPeriod) => {
-    const { guests: kept, reset } = reconcileGuestDates(draftGuests, next.startDate, next.endDate)
+    const { guests: kept, resetGuestIds: reset } = reconcileGuestDates(
+      draftGuests,
+      next.startDate,
+      next.endDate,
+    )
     setPeriod(next)
     setServerProblem(undefined)
     setSubmitError(undefined)
-    if (reset > 0) setDraftGuests(kept)
-    setDatesWereReset(reset > 0)
+    if (reset.length > 0) setDraftGuests(kept)
+    setResetGuestIds(reset)
   }
 
   const changeGuest = (changed: DraftGuest) => {
     setDraftGuests((current) =>
       current.map((guest) => (guest.guestId === changed.guestId ? changed : guest)),
     )
-    setDatesWereReset(false)
+    // The note is about this guest no more.
+    setResetGuestIds((current) => current.filter((id) => id !== changed.guestId))
     setSubmitError(undefined)
   }
 
   const removeGuest = (guestId: string) => {
     setDraftGuests((current) => current.filter((guest) => guest.guestId !== guestId))
+    setResetGuestIds((current) => current.filter((id) => id !== guestId))
     setOpenGuestId(null)
     setSubmitError(undefined)
   }
@@ -182,7 +185,6 @@ function DraftFlow({
     const described = describeCreateFailure(failure)
     if (described.kind === 'period') {
       setServerProblem(described.problem)
-      setStep(0)
     } else {
       setSubmitError(described.text)
     }
@@ -221,63 +223,44 @@ function DraftFlow({
   }
 
   const periodIssue = periodIssueText(period, today, reservations, serverProblem)
-  const primary: PrimaryAction =
-    step === 0
-      ? {
-          label: 'Neste',
-          disabled: periodIssue !== undefined,
-          onClick: () => {
-            setStep(1)
-          },
-        }
-      : {
-          label: 'Opprett',
-          disabled: false,
-          busy: submitting,
-          onClick: () => {
-            void submit()
-          },
-        }
+  const primary: PrimaryAction = {
+    label: 'Opprett',
+    disabled: periodIssue !== undefined,
+    busy: submitting,
+    onClick: () => {
+      void submit()
+    },
+  }
 
   const openGuest =
     openGuestId === null ? undefined : draftGuests.find((guest) => guest.guestId === openGuestId)
 
   return (
     <Page>
-      <FlowNavbar
-        busy={submitting}
-        step={step}
-        primary={primary}
-        onBack={() => {
-          setStep(step - 1)
-        }}
-        onCancel={cancel}
+      <FlowNavbar busy={submitting} primary={primary} onCancel={cancel} />
+      <PeriodStep
+        period={period}
+        today={today}
+        reservations={reservations}
+        message={periodIssue}
+        onChange={changePeriod}
       />
-      <StepIndicator steps={STEPS} current={step} />
-      {step === 0 && (
-        <PeriodStep
-          period={period}
-          today={today}
-          reservations={reservations}
-          message={periodIssue}
-          onChange={changePeriod}
-        />
-      )}
-      {step === 1 && (
-        <GuestsStep
-          guests={guests}
-          draftGuests={draftGuests}
-          period={period}
-          today={today}
-          datesWereReset={datesWereReset}
-          submitError={submitError}
-          onOpenGuest={setOpenGuestId}
-          onRemoveGuest={removeGuest}
-          onAddGuest={() => {
-            setPicking(true)
-          }}
-        />
-      )}
+      <GuestsStep
+        guests={guests}
+        draftGuests={draftGuests}
+        period={period}
+        today={today}
+        resetGuestIds={resetGuestIds}
+        onDismissResetNote={() => {
+          setResetGuestIds([])
+        }}
+        submitError={submitError}
+        onOpenGuest={setOpenGuestId}
+        onRemoveGuest={removeGuest}
+        onAddGuest={() => {
+          setPicking(true)
+        }}
+      />
       <GuestPicker
         opened={picking}
         available={guestsToAdd(guests, draftGuests)}
@@ -297,27 +280,34 @@ function DraftFlow({
         today={today}
         canRemove={draftGuests.length > 1}
         onChange={changeGuest}
+        closing={removingGuestId !== null}
         onRemove={() => {
-          if (openGuestId !== null) removeGuest(openGuestId)
+          setRemovingGuestId(openGuestId)
         }}
         onClose={() => {
+          if (removingGuestId !== null) removeGuest(removingGuestId)
+          setRemovingGuestId(null)
           setOpenGuestId(null)
         }}
       />
       <Actions
+        className="flow-actions"
         opened={confirmingCancel}
         onActionsClosed={() => {
           setConfirmingCancel(false)
         }}
       >
         <ActionsGroup>
-          <ActionsLabel>Forkast reservasjonen?</ActionsLabel>
+          <ActionsLabel>
+            <strong>Forkast reservasjonen?</strong>
+            <span>Det du har fylt ut blir ikke lagret.</span>
+          </ActionsLabel>
           <ActionsButton color="red" onClick={onClose}>
-            Forkast reservasjonen
+            Forkast
           </ActionsButton>
         </ActionsGroup>
         <ActionsGroup>
-          <ActionsButton>Fortsett å redigere</ActionsButton>
+          <ActionsButton className="flow-actions-safe">Fortsett å redigere</ActionsButton>
         </ActionsGroup>
       </Actions>
     </Page>
@@ -351,8 +341,11 @@ function ReservationFlow({ onCreated, onClose }: FlowProps) {
   const failed = data.status === 'error' || profile.status === 'error'
   return (
     <Page>
-      <FlowNavbar step={0} onBack={onClose} onCancel={onClose} />
-      <StepIndicator steps={STEPS} current={0} />
+      {/* The check is there, dimmed, so the navbar does not change when the data arrives. */}
+      <FlowNavbar
+        onCancel={onClose}
+        primary={{ label: 'Opprett', disabled: true, onClick: noop }}
+      />
       {failed ? (
         <ErrorState
           message="Kunne ikke hente data til reservasjonen."
@@ -362,9 +355,7 @@ function ReservationFlow({ onCreated, onClose }: FlowProps) {
           }}
         />
       ) : (
-        <div role="status">
-          <Block className="skeleton-text skeleton-effect-wave">Laster reservasjoner</Block>
-        </div>
+        <FlowSkeleton />
       )}
     </Page>
   )

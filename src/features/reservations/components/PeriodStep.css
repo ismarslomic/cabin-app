@@ -1,30 +1,4 @@
-/* The day and the time as two chips on the right of a row, like "Starts" in the iOS Calendar. */
-.period-chips {
-  display: flex;
-  gap: 8px;
-}
-
-/* The day is a button and the time a native input in a wrapper; both are the same pill. The pill
-   must not shrink inside the row (its text would overflow it). */
-.period-chips .period-chip {
-  flex: 0 0 auto;
-  width: auto;
-  max-width: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-  height: 36px;
-  margin: 0;
-  padding: 0 12px;
-  border: 0;
-  border-radius: 999px;
-  background: var(--cabin-chip);
-  color: var(--f7-text-color);
-  font: inherit;
-  white-space: nowrap;
-}
-
+/* The time pill: the shared pill (shared/ui/chips.css) holding a native input. */
 .period-chip-time {
   min-width: 72px;
 }

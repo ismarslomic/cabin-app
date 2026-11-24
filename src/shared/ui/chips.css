@@ -1,0 +1,25 @@
+/* Values as pills on the right of a list row, like "Starts" in the iOS Calendar. A pill is a button
+   or a wrapper of a native input; it must not shrink inside the row (its text would overflow it). */
+.chips {
+  display: flex;
+  gap: 8px;
+}
+
+.chips .chip {
+  flex: 0 0 auto;
+  width: auto;
+  max-width: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  height: 36px;
+  margin: 0;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--cabin-chip);
+  color: var(--f7-text-color);
+  font: inherit;
+  white-space: nowrap;
+}

@@ -66,25 +66,33 @@ export function reloadProfile(): Promise<void> {
   return loadProfile()
 }
 
-/** Blob URL of a guest's avatar (cached for the session), or null while loading or when there is none. */
-export function useAvatarUrl(guestId: string | undefined): string | null {
-  const [url, setUrl] = useState<string | null>(null)
+/**
+ * Blob URL of an avatar (cached for the session), or null while it loads or when there is none.
+ * `avatarUrl` is the URL from the API (null for a guest without an avatar: then nothing is fetched).
+ * It changes with the image, so a new image is fetched again.
+ */
+export function useAvatarUrl(avatarUrl: string | null | undefined): string | null {
+  const [loaded, setLoaded] = useState<{ source: string; url: string | null }>()
   useEffect(() => {
-    if (!guestId) return
+    if (!avatarUrl) return
     let active = true
-    let request = avatars.get(guestId)
+    let request = avatars.get(avatarUrl)
     if (!request) {
-      request = fetchAvatarUrl(guestId).catch(() => null)
-      avatars.set(guestId, request)
+      // A failure is not kept: the next mount tries again.
+      request = fetchAvatarUrl(avatarUrl).catch(() => {
+        avatars.delete(avatarUrl)
+        return null
+      })
+      avatars.set(avatarUrl, request)
     }
-    void request.then((avatarUrl) => {
-      if (active) setUrl(avatarUrl)
+    void request.then((url) => {
+      if (active) setLoaded({ source: avatarUrl, url })
     })
     return () => {
       active = false
     }
-  }, [guestId])
-  return url
+  }, [avatarUrl])
+  return avatarUrl && loaded?.source === avatarUrl ? loaded.url : null
 }
 
 /** For tests: forget the shared profile and avatars. */

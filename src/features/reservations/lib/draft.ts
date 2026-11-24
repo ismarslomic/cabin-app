@@ -41,6 +41,25 @@ export interface DraftGuest {
   toDate: string | null
 }
 
+/**
+ * The guest with an own date that equals the reservation's first (arrival) or last (departure) day
+ * set back to null: the guest then follows the group, also if the period is changed later.
+ *
+ * @example
+ * normalizeGuestDates({ guestId: 'a', fromDate: '2026-11-27', toDate: '2026-11-28' }, period)
+ * // { guestId: 'a', fromDate: null, toDate: '2026-11-28' } when the period is 27 to 29 November
+ */
+export function normalizeGuestDates(
+  guest: DraftGuest,
+  period: Pick<DraftPeriod, 'startDate' | 'endDate'>,
+): DraftGuest {
+  return {
+    ...guest,
+    fromDate: guest.fromDate === period.startDate ? null : guest.fromDate,
+    toDate: guest.toDate === period.endDate ? null : guest.toDate,
+  }
+}
+
 /** Whether two guest lists have the same guests, in the same order, with the same own dates. */
 export function isSameGuests(a: DraftGuest[], b: DraftGuest[]): boolean {
   return (
@@ -90,17 +109,21 @@ function reconcileGuest(guest: DraftGuest, startDate: string, endDate: string): 
 }
 
 /**
- * Keeps the guests' own dates that still fit the period and resets the others. `reset` is how
- * many guests had a date reset, for the note on the guest step.
+ * Keeps the guests' own dates that still fit the period and resets the others. `resetGuestIds` are
+ * the guests that had a date reset, for the note on the guest list. An own date that now equals the
+ * period's first or last day is the same as none (see `normalizeGuestDates`), but is not a reset.
  */
 export function reconcileGuestDates(
   guests: DraftGuest[],
   startDate: string,
   endDate: string,
-): { guests: DraftGuest[]; reset: number } {
+): { guests: DraftGuest[]; resetGuestIds: string[] } {
   const reconciled = guests.map((guest) => reconcileGuest(guest, startDate, endDate))
-  const reset = reconciled.filter((guest, index) => guest !== guests[index]).length
-  return { guests: reconciled, reset }
+  const resetGuestIds = reconciled
+    .filter((guest, index) => guest !== guests[index])
+    .map((guest) => guest.guestId)
+  const period = { startDate, endDate }
+  return { guests: reconciled.map((guest) => normalizeGuestDates(guest, period)), resetGuestIds }
 }
 
 /** The request body. A guest date equal to the first or last day is the same as the group's. */

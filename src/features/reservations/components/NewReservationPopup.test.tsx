@@ -1,4 +1,4 @@
-import { act, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { f7 } from 'framework7-react'
 import { useState } from 'react'
@@ -53,6 +53,18 @@ interface Stub {
   guests?: unknown[]
   /** The answer to creating a reservation; a created reservation by default. */
   create?: (body: unknown) => Promise<Response>
+}
+
+// jsdom has no CSS transitions: finish the closing of the guest popup by hand.
+function finishGuestPopupClose() {
+  // A calendar sheet that was used also never finishes closing: drop it, so the next
+  // `calendarDay` is looked up in the calendar of the next opening.
+  document.querySelectorAll('.calendar-sheet').forEach((sheet) => {
+    sheet.remove()
+  })
+  act(() => {
+    document.querySelector('.popup.modal-out')?.dispatchEvent(new Event('transitionend'))
+  })
 }
 
 // Answers by URL; a new Response per call (StrictMode runs effects twice).
@@ -214,7 +226,7 @@ describe('NewReservationPopup', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Sluttdatoen må være etter startdatoen.',
     )
-    expect(screen.getByRole('link', { name: 'Neste' })).toHaveClass('disabled')
+    expect(screen.getByRole('link', { name: 'Opprett' })).toHaveClass('disabled')
   })
 
   it('disables fully booked days in the calendar, but not the handover days', async () => {
@@ -231,14 +243,14 @@ describe('NewReservationPopup', () => {
     expect(calendarDay('2026-11-14')).not.toHaveClass('calendar-day-disabled')
   })
 
-  it('warns when the period overlaps a reservation and blocks "Neste"', async () => {
+  it('warns when the period overlaps a reservation and blocks "Opprett"', async () => {
     stubReservations({ reservations: [reservation('2026-11-26', '2026-11-30')] })
     renderPopup()
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Perioden overlapper en annen reservasjon. Velg andre datoer.',
     )
-    expect(screen.getByRole('link', { name: 'Neste' })).toHaveClass('disabled')
+    expect(screen.getByRole('link', { name: 'Opprett' })).toHaveClass('disabled')
   })
 
   it('allows a same-day handover', async () => {
@@ -247,10 +259,10 @@ describe('NewReservationPopup', () => {
 
     await screen.findByText('2 netter')
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Neste' })).not.toHaveClass('disabled')
+    expect(screen.getByRole('link', { name: 'Opprett' })).not.toHaveClass('disabled')
   })
 
-  it('rejects a time before 02:00 and blocks "Neste"', async () => {
+  it('rejects a time before 02:00 and blocks "Opprett"', async () => {
     stubReservations()
     const user = userEvent.setup()
     renderPopup()
@@ -260,7 +272,7 @@ describe('NewReservationPopup', () => {
     await user.type(arrival, '01:30')
 
     expect(screen.getByText('Velg et tidspunkt mellom 02:00 og 23:59.')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Neste' })).toHaveClass('disabled')
+    expect(screen.getByRole('link', { name: 'Opprett' })).toHaveClass('disabled')
   })
 
   it('shows the period problem before a time problem, and marks the time field', async () => {
@@ -277,23 +289,50 @@ describe('NewReservationPopup', () => {
     expect(screen.getByLabelText('Avreise kl.')).toHaveAttribute('aria-invalid', 'false')
   })
 
-  it('goes to the guests step and back', async () => {
+  it('shows the period and the guests on one page', async () => {
     stubReservations()
+    renderPopup()
+
+    expect(await screen.findByRole('link', { name: 'Kommende helg' })).toBeInTheDocument()
+    expect(screen.getByText('Gjester (3)')).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Neste' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Tilbake' })).not.toBeInTheDocument()
+  })
+
+  it('shows the period before the guests', async () => {
+    stubReservations()
+    renderPopup()
+
+    const period = await screen.findByText('Eller velg datoer')
+    const guests = screen.getByText('Gjester (3)')
+
+    expect(period.compareDocumentPosition(guests) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('does not send while "Opprett" is disabled', async () => {
+    const create = vi.fn(() => Promise.resolve(new Response(null, { status: 201 })))
+    stubReservations({ reservations: [reservation('2026-11-26', '2026-11-30')], create })
     const user = userEvent.setup()
     renderPopup()
 
-    await user.click(await screen.findByRole('link', { name: 'Neste' }))
-    expect(screen.getByText('Gjester (3)')).toBeInTheDocument()
+    const save = await screen.findByRole('link', { name: 'Opprett' })
+    expect(save).toHaveAttribute('aria-disabled', 'true')
+    await user.click(save)
 
-    await user.click(screen.getByRole('link', { name: 'Tilbake' }))
-    expect(screen.getByRole('link', { name: 'Kommende helg' })).toBeInTheDocument()
+    expect(create).not.toHaveBeenCalled()
   })
 
-  describe('guests step', () => {
+  describe('guests', () => {
+    // The day pill in the guest detail: the period section has a pill with the same name.
+    function ownDatePill(name = 'fre 27. nov.') {
+      const list = screen.getByRole('checkbox', { name: 'Egen ankomst' }).closest('.list ul')
+      return within(list as HTMLElement).getByRole('button', { name })
+    }
+
     async function openGuests() {
       const user = userEvent.setup()
       renderPopup()
-      await user.click(await screen.findByRole('link', { name: 'Neste' }))
+      await screen.findByText(/^Gjester \(\d+\)$/)
       return user
     }
 
@@ -307,26 +346,100 @@ describe('NewReservationPopup', () => {
       expect(screen.queryByText('Siri Test')).not.toBeInTheDocument()
     })
 
-    it('adds guests from the picker, grouped, and adds nothing on "Avbryt"', async () => {
+    it('has an add row without a chevron, that is disabled at the most guests', async () => {
+      const many = Array.from({ length: 50 }, (_, index) =>
+        guest(`g${index}`, `Gjest${index}`, true),
+      )
+      stubReservations({ guests: many })
+      const user = await openGuests()
+
+      const add = screen.getByRole('link', { name: 'Legg til gjest' }).closest('li')
+      expect(add).toHaveClass('no-chevron', 'disabled')
+      expect(screen.getByText('En reservasjon kan ha opptil 50 gjester.')).toBeInTheDocument()
+      await user.click(screen.getByRole('link', { name: 'Legg til gjest' }))
+      // The picker did not open.
+      expect(screen.queryByRole('link', { name: 'Legg til valgte' })).not.toBeInTheDocument()
+    })
+
+    it('adds guests from the picker, grouped, with a title and how many are picked', async () => {
       stubReservations()
       const user = await openGuests()
 
-      await user.click(screen.getByText('Legg til gjest'))
+      await user.click(screen.getByRole('link', { name: 'Legg til gjest' }))
       expect(await screen.findByText('Andre')).toBeInTheDocument()
-      expect(screen.getByRole('link', { name: 'Legg til valgte (0)' })).toHaveClass('disabled')
+      expect(screen.getByText('Velg gjester')).toBeInTheDocument()
+      expect(screen.getByText('Ingen valgt')).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'Legg til valgte' })).toHaveClass('disabled')
 
       await user.click(screen.getByRole('checkbox', { name: 'Siri Test' }))
-      await user.click(screen.getByRole('link', { name: 'Legg til valgte (1)' }))
+      expect(screen.getByText('1 valgt')).toBeInTheDocument()
+      await user.click(screen.getByRole('link', { name: 'Legg til valgte' }))
 
       expect(screen.getByText('Gjester (4)')).toBeInTheDocument()
       expect(screen.getByText('Alle gjestene er allerede lagt til.')).toBeInTheDocument()
+    })
+
+    it('starts empty each time the picker is opened', async () => {
+      stubReservations()
+      const user = await openGuests()
+
+      await user.click(screen.getByRole('link', { name: 'Legg til gjest' }))
+      await user.click(await screen.findByRole('checkbox', { name: 'Siri Test' }))
+      await user.type(screen.getByRole('searchbox'), 'sir')
+      await user.click(screen.getByRole('link', { name: 'Lukk' }))
+      // jsdom has no CSS transitions: finish the closing of the sheet by hand.
+      act(() => {
+        document.querySelector('.sheet-modal')?.dispatchEvent(new Event('transitionend'))
+      })
+      await user.click(screen.getByRole('link', { name: 'Legg til gjest' }))
+
+      expect(await screen.findByText('Ingen valgt')).toBeInTheDocument()
+      expect(screen.getByRole('searchbox')).toHaveValue('')
+    })
+
+    it('adds nothing when the picker is closed with the X', async () => {
+      stubReservations()
+      const user = await openGuests()
+
+      await user.click(screen.getByRole('link', { name: 'Legg til gjest' }))
+      await user.click(await screen.findByRole('checkbox', { name: 'Siri Test' }))
+      await user.click(screen.getByRole('link', { name: 'Lukk' }))
+
+      expect(screen.getByText('Gjester (3)')).toBeInTheDocument()
+    })
+
+    it('does not add anything when nothing is picked, also when the check is tapped', async () => {
+      stubReservations()
+      const user = await openGuests()
+
+      await user.click(screen.getByRole('link', { name: 'Legg til gjest' }))
+      await user.click(await screen.findByRole('link', { name: 'Legg til valgte' }))
+
+      expect(screen.getByText('Gjester (3)')).toBeInTheDocument()
+    })
+
+    it('asks for the avatar only of guests that have one, using the URL from the API', async () => {
+      const withAvatar = {
+        ...guest('siri', 'Siri', false),
+        avatarUrl: '/api/guests/siri/avatar?v=9',
+      }
+      stubReservations({ guests: [guest('kari', 'Kari', true), withAvatar] })
+      const user = await openGuests()
+
+      await user.click(screen.getByRole('link', { name: 'Legg til gjest' }))
+      await screen.findByRole('checkbox', { name: 'Siri Test' })
+
+      const avatarCalls = fetchMock.mock.calls
+        .map(([url]) => url as string)
+        .filter((url) => url.includes('/avatar'))
+      expect(avatarCalls).toEqual(['/api/guests/siri/avatar?v=9'])
     })
 
     it('filters the picker by name', async () => {
       stubReservations({ guests: [...allGuests, guest('anne', 'Anne', false)] })
       const user = await openGuests()
 
-      await user.click(screen.getByText('Legg til gjest'))
+      await user.click(screen.getByRole('link', { name: 'Legg til gjest' }))
       await user.type(await screen.findByRole('searchbox'), 'ann')
 
       expect(screen.getByRole('checkbox', { name: 'Anne Test' })).toBeInTheDocument()
@@ -342,7 +455,8 @@ describe('NewReservationPopup', () => {
       const user = await openGuests()
 
       await user.click(screen.getByText('Per Test'))
-      expect(screen.getByRole('link', { name: 'Slett gjest fra reservasjon' })).toHaveClass(
+      // The class of a list button is on its <li>.
+      expect(screen.getByRole('link', { name: 'Fjern fra reservasjon' }).closest('li')).toHaveClass(
         'disabled',
       )
       expect(screen.getByText('En reservasjon må ha minst én gjest.')).toBeInTheDocument()
@@ -353,10 +467,171 @@ describe('NewReservationPopup', () => {
       const user = await openGuests()
 
       await user.click(screen.getByText('Ola Test'))
-      await user.click(screen.getByRole('link', { name: 'Slett gjest fra reservasjon' }))
+      await user.click(screen.getByRole('link', { name: 'Fjern fra reservasjon' }))
+      // The popup slides away with its content; the guest is taken out when it has closed.
+      expect(screen.getByRole('heading', { name: 'Ola Test' })).toBeInTheDocument()
+      expect(screen.getByText('Gjester (3)')).toBeInTheDocument()
+      finishGuestPopupClose()
 
       expect(screen.getByText('Gjester (2)')).toBeInTheDocument()
       expect(screen.queryByText('Ola Test')).not.toBeInTheDocument()
+    })
+
+    it('has a disabled check until something changes, also when the switches are only turned on', async () => {
+      stubReservations()
+      const user = await openGuests()
+
+      await user.click(screen.getByText('Ola Test'))
+      const check = screen.getByRole('link', { name: 'Ferdig' })
+      expect(check).toHaveAttribute('aria-disabled', 'true')
+
+      // Own dates that equal the reservation's are no change.
+      await user.click(screen.getByRole('checkbox', { name: 'Egen ankomst' }))
+      await user.click(screen.getByRole('checkbox', { name: 'Egen avreise' }))
+      expect(check).toHaveAttribute('aria-disabled', 'true')
+
+      await user.click(ownDatePill())
+      await user.click(calendarDay('2026-10-28'))
+      expect(check).toHaveAttribute('aria-disabled', 'false')
+    })
+
+    it('does not close the guest popup when the disabled check is tapped', async () => {
+      stubReservations()
+      const user = await openGuests()
+
+      await user.click(screen.getByText('Ola Test'))
+      await user.click(screen.getByRole('link', { name: 'Ferdig' }))
+
+      // Closing would start the closing animation of the popup.
+      expect(document.querySelector('.popup.modal-out')).toBeNull()
+      expect(screen.getByRole('heading', { name: 'Ola Test' })).toBeInTheDocument()
+    })
+
+    it('takes a guest out of the note about reset dates when the guest is edited or removed', async () => {
+      stubReservations()
+      const user = await openGuests()
+      // Ola and Kari get their own arrival on the 28th, then the period moves to the weekend after.
+      for (const name of ['Ola Test', 'Kari Test']) {
+        await user.click(screen.getByText(name))
+        await user.click(screen.getByRole('checkbox', { name: 'Egen ankomst' }))
+        await user.click(ownDatePill())
+        await user.click(calendarDay('2026-10-28'))
+        await user.click(screen.getByRole('link', { name: 'Ferdig' }))
+        finishGuestPopupClose()
+      }
+      await user.click(screen.getByRole('link', { name: 'Neste helg' }))
+      expect(screen.getByRole('status')).toHaveTextContent('for Kari Test og Ola Test')
+
+      // Editing Ola again: the note is about Kari only. Removing Kari: no note.
+      await user.click(screen.getByText('Ola Test'))
+      await user.click(screen.getByRole('checkbox', { name: 'Egen avreise' }))
+      await user.click(ownDatePill('søn 6. des.'))
+      // The calendar writes the day and the month (counted from 0) without a leading zero.
+      await user.click(calendarDay('2026-11-5'))
+      await user.click(screen.getByRole('link', { name: 'Ferdig' }))
+      finishGuestPopupClose()
+      expect(screen.getByRole('status')).toHaveTextContent('for Kari Test fordi')
+      expect(screen.getByRole('status')).not.toHaveTextContent('Ola Test')
+
+      const row = screen.getByText('Kari Test').closest('li') as HTMLElement
+      await user.click(within(row).getByRole('link', { name: 'Fjern gjest' }))
+      expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    })
+
+    it('stores an own date equal to the reservation as none, so the guest follows the group', async () => {
+      stubReservations()
+      const user = await openGuests()
+
+      await user.click(screen.getByText('Ola Test'))
+      await user.click(screen.getByRole('checkbox', { name: 'Egen ankomst' }))
+      await user.click(ownDatePill())
+      await user.click(calendarDay('2026-10-28'))
+      await user.click(screen.getByRole('link', { name: 'Ferdig' }))
+      expect(await screen.findByText('Ankomst lør 28. nov.')).toBeInTheDocument()
+      finishGuestPopupClose()
+
+      // Back to the first day of the reservation: that is no own arrival.
+      await user.click(screen.getByText('Ola Test'))
+      await user.click(ownDatePill('lør 28. nov.'))
+      await user.click(calendarDay('2026-10-27'))
+      await user.click(screen.getByRole('link', { name: 'Ferdig' }))
+      finishGuestPopupClose()
+
+      expect(screen.queryByText('Ankomst lør 28. nov.')).not.toBeInTheDocument()
+      await user.click(screen.getByText('Ola Test'))
+      expect(screen.getByRole('checkbox', { name: 'Egen ankomst' })).not.toBeChecked()
+    })
+
+    it('throws the changes away when the guest popup is closed with the X', async () => {
+      stubReservations()
+      const user = await openGuests()
+
+      await user.click(screen.getByText('Ola Test'))
+      await user.click(screen.getByRole('checkbox', { name: 'Egen ankomst' }))
+      await user.click(ownDatePill())
+      await user.click(calendarDay('2026-10-28'))
+      await user.click(screen.getByRole('link', { name: 'Lukk' }))
+
+      expect(screen.queryByText('Ankomst lør 28. nov.')).not.toBeInTheDocument()
+    })
+
+    it('keeps one date row per switch when a switch is turned on and off again and again', async () => {
+      stubReservations()
+      const user = await openGuests()
+
+      await user.click(screen.getByText('Ola Test'))
+      const arrival = screen.getByRole('checkbox', { name: 'Egen ankomst' })
+      const list = arrival.closest('.list ul') as HTMLElement
+      // With the departure on too, both date rows exist at once (they once shared a React key).
+      await user.click(screen.getByRole('checkbox', { name: 'Egen avreise' }))
+      for (let turn = 0; turn < 3; turn++) {
+        await user.click(arrival)
+        await user.click(arrival)
+      }
+      await user.click(arrival)
+
+      expect(within(list).getAllByText('Ankomst')).toHaveLength(1)
+      expect(within(list).getAllByText('Avreise')).toHaveLength(1)
+    })
+
+    it('removes a guest with the trash button that a swipe on the row shows', async () => {
+      stubReservations()
+      const user = await openGuests()
+
+      // The swipe button is an icon (a trash can); the guest popup has its own "Fjern fra reservasjon".
+      const row = screen.getByText('Ola Test').closest('li') as HTMLElement
+      await user.click(within(row).getByRole('link', { name: 'Fjern gjest' }))
+
+      expect(screen.getByText('Gjester (2)')).toBeInTheDocument()
+      expect(screen.queryByText('Ola Test')).not.toBeInTheDocument()
+    })
+
+    it('does not remove the last guest, also when the delete button is tapped', async () => {
+      stubReservations({ guests: [guest('per', 'Per', false)] })
+      const user = await openGuests()
+
+      await user.click(screen.getByText('Per Test'))
+      await user.click(screen.getByRole('link', { name: 'Fjern fra reservasjon' }))
+
+      expect(screen.getByText('Gjester (1)')).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'Per Test' })).toBeInTheDocument()
+    })
+
+    it('shows the guest like a contact card: name, own dates, hint and a done check', async () => {
+      stubReservations()
+      const user = await openGuests()
+
+      await user.click(screen.getByText('Ola Test'))
+
+      expect(screen.getByRole('heading', { name: 'Ola Test' })).toBeInTheDocument()
+      expect(screen.getByText('Egne datoer')).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'Ferdig' })).toBeInTheDocument()
+      // One period at the end: the dates already end with one.
+      const hint = screen.getByText(/Uten egne datoer/)
+      expect(hint).toHaveTextContent(
+        'Uten egne datoer er gjesten med hele oppholdet: fre 27. nov. – søn 29. nov.',
+      )
+      expect(hint).not.toHaveTextContent('..')
     })
 
     it('shows the own-date switches inside the list of the guest detail', async () => {
@@ -372,7 +647,9 @@ describe('NewReservationPopup', () => {
       )
       // The date row that appears when the switch is on is in the same list too.
       await user.click(arrival)
-      expect(screen.getByText('Ankomstdato').closest('.list ul')).toBe(arrival.closest('.list ul'))
+      const list = arrival.closest('.list ul') as HTMLElement
+      expect(within(list).getByRole('button', { name: 'fre 27. nov.' })).toBeInTheDocument()
+      expect(within(list).getByText('Ankomst')).toBeInTheDocument()
     })
 
     it('gives a guest own dates inside the stay', async () => {
@@ -381,9 +658,11 @@ describe('NewReservationPopup', () => {
 
       await user.click(screen.getByText('Ola Test'))
       await user.click(screen.getByRole('checkbox', { name: 'Egen ankomst' }))
-      await user.click(screen.getByText('Ankomstdato'))
+      await user.click(ownDatePill())
       // 27-29 November; the calendar counts months from 0.
       await user.click(calendarDay('2026-10-28'))
+      // The changes are kept with the check ("Ferdig").
+      await user.click(screen.getByRole('link', { name: 'Ferdig' }))
 
       expect(await screen.findByText('Ankomst lør 28. nov.')).toBeInTheDocument()
       await user.click(screen.getByRole('checkbox', { name: 'Egen avreise' }))
@@ -395,16 +674,38 @@ describe('NewReservationPopup', () => {
       const user = await openGuests()
       await user.click(screen.getByText('Ola Test'))
       await user.click(screen.getByRole('checkbox', { name: 'Egen ankomst' }))
-      await user.click(screen.getByText('Ankomstdato'))
+      await user.click(ownDatePill())
       await user.click(calendarDay('2026-10-28'))
+      await user.click(screen.getByRole('link', { name: 'Ferdig' }))
       await screen.findByText('Ankomst lør 28. nov.')
 
-      await user.click(screen.getByRole('link', { name: 'Tilbake' }))
       await user.click(screen.getByRole('link', { name: 'Neste helg' }))
-      await user.click(screen.getByRole('link', { name: 'Neste' }))
 
       expect(screen.queryByText('Ankomst lør 28. nov.')).not.toBeInTheDocument()
-      expect(screen.getByRole('status')).toHaveTextContent('Egne datoer ble nullstilt')
+      expect(screen.getByRole('status')).toHaveTextContent(
+        'Egne datoer er fjernet for Ola Test fordi de ikke passer i den nye perioden. Gjesten følger nå hele oppholdet.',
+      )
+
+      // A later period change that removes nothing takes the note away.
+      await user.click(screen.getByRole('link', { name: 'Kommende helg' }))
+      expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    })
+
+    it('lets the user close the note about reset dates', async () => {
+      stubReservations()
+      const user = await openGuests()
+      await user.click(screen.getByText('Ola Test'))
+      await user.click(screen.getByRole('checkbox', { name: 'Egen ankomst' }))
+      await user.click(ownDatePill())
+      await user.click(calendarDay('2026-10-28'))
+      await user.click(screen.getByRole('link', { name: 'Ferdig' }))
+      finishGuestPopupClose()
+      await user.click(screen.getByRole('link', { name: 'Neste helg' }))
+      expect(screen.getByRole('status')).toBeInTheDocument()
+
+      await user.click(screen.getByRole('link', { name: 'Skjul melding' }))
+
+      expect(screen.queryByRole('status')).not.toBeInTheDocument()
     })
 
     it('asks before throwing away a changed guest list', async () => {
@@ -412,7 +713,7 @@ describe('NewReservationPopup', () => {
       const user = await openGuests()
 
       await user.click(screen.getByText('Ola Test'))
-      await user.click(screen.getByRole('link', { name: 'Slett gjest fra reservasjon' }))
+      await user.click(screen.getByRole('link', { name: 'Fjern fra reservasjon' }))
       await user.click(screen.getByRole('link', { name: 'Avbryt' }))
 
       expect(await screen.findByText('Forkast reservasjonen?')).toBeInTheDocument()
@@ -424,7 +725,8 @@ describe('NewReservationPopup', () => {
       Promise.resolve(Response.json({ code, message: 'English' }, { status }))
 
     async function submit(user: ReturnType<typeof userEvent.setup>) {
-      await user.click(await screen.findByRole('link', { name: 'Neste' }))
+      // The dimmed check is there while loading: wait for the page first.
+      await screen.findByText(/^Gjester \(\d+\)$/)
       await user.click(screen.getByRole('link', { name: 'Opprett' }))
     }
 
@@ -474,20 +776,19 @@ describe('NewReservationPopup', () => {
       expect(create).toHaveBeenCalledOnce()
     })
 
-    it('does not cancel or go back while the reservation is being sent', async () => {
+    it('does not cancel while the reservation is being sent', async () => {
       stubReservations({ create: () => new Promise<Response>(() => undefined) })
       const user = userEvent.setup()
       const onClose = renderPopup()
 
       await submit(user)
       await user.click(screen.getByRole('link', { name: 'Avbryt' }))
-      await user.click(screen.getByRole('link', { name: 'Tilbake' }))
 
       expect(onClose).not.toHaveBeenCalled()
       expect(screen.getByText('Gjester (3)')).toBeInTheDocument()
     })
 
-    it('goes back to the period step when the period overlaps another reservation', async () => {
+    it('shows the overlap under the period and keeps the guests', async () => {
       stubReservations({ create: () => apiError(409, 'OVERLAP') })
       const user = userEvent.setup()
       renderPopup()
@@ -497,11 +798,40 @@ describe('NewReservationPopup', () => {
       expect(await screen.findByRole('alert')).toHaveTextContent(
         'Perioden overlapper en annen reservasjon. Velg andre datoer.',
       )
-      expect(screen.getByRole('link', { name: 'Neste' })).toHaveClass('disabled')
+      expect(screen.getByText('Gjester (3)')).toBeInTheDocument()
+    })
+
+    it('scrolls the message under the period into view when the server reports a problem', async () => {
+      const scrollIntoView = vi.fn()
+      // jsdom has no `scrollIntoView`.
+      Element.prototype.scrollIntoView = scrollIntoView
+      stubReservations({ create: () => apiError(409, 'OVERLAP') })
+      const user = userEvent.setup()
+      renderPopup()
+
+      await submit(user)
+
+      await vi.waitFor(() => {
+        expect(scrollIntoView).toHaveBeenCalled()
+      })
+      Reflect.deleteProperty(Element.prototype, 'scrollIntoView')
+    })
+
+    it('blocks "Opprett" until the period is changed after an overlap', async () => {
+      stubReservations({ create: () => apiError(409, 'OVERLAP') })
+      const user = userEvent.setup()
+      renderPopup()
+
+      await submit(user)
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'Perioden overlapper en annen reservasjon. Velg andre datoer.',
+      )
+      expect(screen.getByRole('link', { name: 'Opprett' })).toHaveClass('disabled')
       // Changing the period takes the message away.
       await user.click(screen.getByRole('link', { name: 'Neste helg' }))
       expect(screen.queryByRole('alert')).not.toBeInTheDocument()
-      expect(screen.getByRole('link', { name: 'Neste' })).not.toHaveClass('disabled')
+      expect(screen.getByRole('link', { name: 'Opprett' })).not.toHaveClass('disabled')
     })
 
     it('shows the problem above the button and lets the user try again', async () => {
@@ -548,7 +878,8 @@ describe('NewReservationPopup', () => {
       await submit(user)
       await screen.findByRole('alert')
       await user.click(screen.getByText('Ola Test'))
-      await user.click(screen.getByRole('link', { name: 'Slett gjest fra reservasjon' }))
+      await user.click(screen.getByRole('link', { name: 'Fjern fra reservasjon' }))
+      finishGuestPopupClose()
 
       expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     })
@@ -655,7 +986,7 @@ describe('NewReservationPopup', () => {
     expect(await screen.findByText('Forkast reservasjonen?')).toBeInTheDocument()
     expect(onClose).not.toHaveBeenCalled()
 
-    await user.click(screen.getByText('Forkast reservasjonen'))
+    await user.click(screen.getByText('Forkast'))
     expect(onClose).toHaveBeenCalledOnce()
   })
 
@@ -704,6 +1035,21 @@ describe('NewReservationPopup', () => {
     await waitFor(() => {
       expect(onClose).toHaveBeenCalled()
     })
+  })
+
+  it('shows a skeleton of the page and a dimmed check while the data loads', async () => {
+    fetchMock.mockImplementation(() => new Promise<Response>(() => undefined))
+    vi.stubGlobal('fetch', fetchMock)
+    const { container } = renderWithF7(
+      <NewReservationPopup opened onCreated={vi.fn()} onClose={vi.fn()} />,
+    )
+
+    expect(await screen.findByRole('status')).toHaveTextContent('Laster …')
+    // The same structure as the loaded page: quick picks, the period card and the guest list.
+    expect(container.querySelectorAll('.flow-skeleton-segmented')).toHaveLength(1)
+    expect(container.querySelectorAll('.flow-skeleton-chip')).toHaveLength(6)
+    expect(container.querySelectorAll('.flow-skeleton-avatar')).toHaveLength(3)
+    expect(screen.getByRole('link', { name: 'Opprett' })).toHaveAttribute('aria-disabled', 'true')
   })
 
   it('offers a retry when the reservations cannot be loaded', async () => {
