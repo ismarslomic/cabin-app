@@ -9,7 +9,6 @@ import {
   Page,
   Popup,
   Toggle,
-  View,
 } from 'framework7-react'
 import { Avatar } from '@/features/profile/index.ts'
 import type { Guest } from '@/features/reservations/api/types.ts'
@@ -97,58 +96,56 @@ export default function GuestDetail({
 
   return (
     <Popup opened={!!guest && !!draftGuest} onPopupClosed={onClose}>
-      <View>
-        <Page>
-          <Navbar title={guest ? guestName(guest) : ''}>
-            <NavRight>
-              <Link popupClose>Ferdig</Link>
-            </NavRight>
-          </Navbar>
-          {guest && draftGuest && (
-            <>
-              <Block className="text-align-center">
-                <Avatar guestId={guest.id} size={72} />
-              </Block>
-              <List strong inset dividersIos>
-                <OwnDay
-                  switchLabel="Egen ankomst"
-                  dateLabel="Ankomstdato"
-                  today={today}
-                  value={draftGuest.fromDate}
-                  defaultValue={startDate}
-                  min={startDate}
-                  max={draftGuest.toDate ?? endDate}
-                  onChange={(fromDate) => {
-                    onChange({ ...draftGuest, fromDate })
-                  }}
-                />
-                <OwnDay
-                  switchLabel="Egen avreise"
-                  dateLabel="Avreisedato"
-                  today={today}
-                  value={draftGuest.toDate}
-                  defaultValue={endDate}
-                  min={draftGuest.fromDate ?? startDate}
-                  max={endDate}
-                  onChange={(toDate) => {
-                    onChange({ ...draftGuest, toDate })
-                  }}
-                />
-              </List>
-              <Block>
-                Uten egne datoer er gjesten med hele oppholdet:{' '}
-                {formatDateRange(startDate, endDate, today)}.
-              </Block>
-              <Block>
-                <Button color="red" disabled={!canRemove} onClick={onRemove}>
-                  Slett gjest fra reservasjon
-                </Button>
-                {!canRemove && <p>En reservasjon må ha minst én gjest.</p>}
-              </Block>
-            </>
-          )}
-        </Page>
-      </View>
+      <Page>
+        <Navbar title={guest ? guestName(guest) : ''}>
+          <NavRight>
+            <Link popupClose>Ferdig</Link>
+          </NavRight>
+        </Navbar>
+        {guest && draftGuest && (
+          <>
+            <Block className="text-align-center">
+              <Avatar guestId={guest.id} size={72} />
+            </Block>
+            <List strong inset dividersIos>
+              <OwnDay
+                switchLabel="Egen ankomst"
+                dateLabel="Ankomstdato"
+                today={today}
+                value={draftGuest.fromDate}
+                defaultValue={startDate}
+                min={startDate}
+                max={draftGuest.toDate ?? endDate}
+                onChange={(fromDate) => {
+                  onChange({ ...draftGuest, fromDate })
+                }}
+              />
+              <OwnDay
+                switchLabel="Egen avreise"
+                dateLabel="Avreisedato"
+                today={today}
+                value={draftGuest.toDate}
+                defaultValue={endDate}
+                min={draftGuest.fromDate ?? startDate}
+                max={endDate}
+                onChange={(toDate) => {
+                  onChange({ ...draftGuest, toDate })
+                }}
+              />
+            </List>
+            <Block>
+              Uten egne datoer er gjesten med hele oppholdet:{' '}
+              {formatDateRange(startDate, endDate, today)}.
+            </Block>
+            <Block>
+              <Button color="red" disabled={!canRemove} onClick={onRemove}>
+                Slett gjest fra reservasjon
+              </Button>
+              {!canRemove && <p>En reservasjon må ha minst én gjest.</p>}
+            </Block>
+          </>
+        )}
+      </Page>
     </Popup>
   )
 }

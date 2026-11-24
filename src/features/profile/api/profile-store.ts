@@ -1,7 +1,7 @@
 import { useEffect, useState, useSyncExternalStore } from 'react'
 import { fetchAvatarUrl, fetchProfile } from '@/features/profile/api/profile-api.ts'
 import type { Profile } from '@/features/profile/api/types.ts'
-import { reloadForLogin, SessionExpiredError } from '@/shared/lib/http.ts'
+import { handleLoadFailure } from '@/shared/ui/failure-feedback.ts'
 
 export type ProfileState =
   | { status: 'loading'; profile?: Profile }
@@ -28,11 +28,9 @@ export function loadProfile(): Promise<void> {
       setState({ status: 'ready', profile })
     })
     .catch((error: unknown) => {
-      if (error instanceof SessionExpiredError) {
-        reloadForLogin()
-        return
-      }
-      setState({ status: 'error', profile: state.profile })
+      const status = handleLoadFailure(error)
+      // 'loading' means the page is reloading for the login: leave the state as it is.
+      if (status === 'error') setState({ status, profile: state.profile })
     })
     .finally(() => {
       inflight = undefined

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { fetchCurrentYearStats, fetchLiveStats } from '@/features/home/api/stats-api.ts'
 import type { CurrentYearStats, LiveStats } from '@/features/home/api/stats-api.ts'
-import { reloadForLogin, SessionExpiredError } from '@/shared/lib/http.ts'
+import { handleLoadFailure } from '@/shared/ui/failure-feedback.ts'
 
 export type HomeStatsState =
   | { status: 'loading' }
@@ -13,11 +13,8 @@ async function load(): Promise<HomeStatsState> {
     const [live, year] = await Promise.all([fetchLiveStats(), fetchCurrentYearStats()])
     return { status: 'ready', live, year }
   } catch (error: unknown) {
-    if (error instanceof SessionExpiredError) {
-      reloadForLogin()
-      return { status: 'loading' }
-    }
-    return { status: 'error' }
+    // A session or access problem is also handled for the whole app.
+    return { status: handleLoadFailure(error) }
   }
 }
 

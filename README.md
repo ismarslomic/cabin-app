@@ -86,7 +86,7 @@ pnpm dev
 - The profile feature (`features/profile`) reads `GET /api/me` (`MeResponse`) and saves with `PUT /api/me` (`MeUpdate`), which returns the saved `MeResponse`; the store keeps it, so no second request. The user can change only first name, last name, birth year and gender. Email is read-only by design: changing it would affect the Cloudflare Access session and policy, and the backend ignores it on `PUT /api/me`.
 - **Optimistic concurrency:** every guest or reservation carries a `version`. A `PUT` or `DELETE` sends the version it read, and `412` (`VERSION_MISMATCH`) means someone changed it since. The profile page then fetches the latest profile, resets the form to it and says so; do the same for future writes (reload, then let the user retry). The UI never sees `version`: the API function takes it as a separate argument.
 - The current and next reservation list every linked guest (`LiveGuestStats` with `stayStartDate` and `stayEndDate`), also guests who have not arrived or have already left. The home page dims the avatars of guests whose own stay does not include today.
-- A `401` (`SessionExpiredError`) calls `reloadForLogin()` from `shared/lib/http.ts`, which reloads the page so Cloudflare Access shows its login. No message.
+- A `401` (`SessionExpiredError`) reloads the page so Cloudflare Access shows its login, no message. Do not call `reloadForLogin()` from a feature: it happens in `handleCommonFailure` (see "Where the code lives" under "User feedback and errors").
 - Avatars come from `GET /api/guests/{id}/avatar` through `appFetch` and are shown as blob URLs (`img-src` already allows `blob:`).
 
 ## Icons
@@ -133,6 +133,12 @@ Not used: `f7.notification` (push-style tone) and Popover (not for phones).
 
 - Texts for `ApiError.code` sit in the feature that owns the call (`features/<name>/api/`). Generic ones (network, `401`, `403`, `5xx`) sit in `shared/`.
 - Reusable pieces (`ErrorState`, a toast helper with the defaults above) sit in `shared/`.
+- **One path for a failed API call.** Never handle `401`, `403` or a network failure in a feature:
+  1. The API file calls `ensureOk(response)` (`shared/lib/api-error.ts`), which throws `ApiRequestError { status, code }` for a bad answer. `appFetch` already throws `SessionExpiredError` for `401`.
+  2. The caller (a hook or a submit handler) runs `classifyFailure(error)`, which returns `session`, `forbidden`, `network` or `api { status, code }`.
+  3. `handleCommonFailure(failure)` (`shared/ui/failure-feedback.ts`) handles the three that look the same everywhere: `session` reloads for login (no message), `forbidden` shows the single-button no-access alert (an optional callback runs when it is dismissed), `network` shows the top toast with the defaults above, only when the caller sets `networkToast` (for something the user started, such as a submit). It returns `true` when it handled the failure. A request that loads what a page shows uses `handleLoadFailure(error)` instead: it does the same and says what to show, `'loading'` while the page reloads for the login, otherwise `'error'` (an `ErrorState` with a retry, also after the no-access alert). Several failures at once show one no-access alert.
+  4. Only for `api` does the feature decide: its own `code` to text mapping (`features/<name>/api/`) and where the text goes (inline, back to a step, `ErrorState`).
+     A new common case (for example a new status that always means the same) is added to `classifyFailure` and `handleCommonFailure`, not to a feature.
 
 ## Testing
 
@@ -141,6 +147,7 @@ Not used: `f7.notification` (push-style tone) and Popover (not for phones).
 - Query by role or label (`getByRole`, `getByLabelText`), not by CSS class or test id, unless there is no alternative.
 - Use `userEvent.setup()` and `await user.click(...)`, not `fireEvent`.
 - `src/test/setup.ts` registers the jest-dom matchers, cleans up after each test and stubs `window.matchMedia` (missing in jsdom, needed by Framework7).
+- Framework7 queues a dialog behind one that is still open, so a test that opens an alert (`f7.dialog.alert`, for example the no-access alert) closes it (click "OK") before it ends; a later test in the same file would otherwise never see its own alert. Call `resetFailureFeedback()` in `beforeEach` of a test file that triggers it.
 - **Accessible names serve the tests.** The app has about 20 known users and none has accessibility needs, so a name is not a goal in itself: it is how tests find a control by role. When a Framework7 control has no name, first try `aria-label` (it works for example on `Toggle`, where it lands on the wrapping `<label>`) or a real `<label htmlFor>` (`ListInput`, see `TimeInput` in `PeriodStep.tsx`) and check with a test query. Build a custom component only when that provably fails and the missing name would make tests clearly more complex; never assume it fails.
 - Render Framework7 trees inside `StrictMode` like `main.tsx` does (see `App.test.tsx`). Framework7 pages render asynchronously, so use `findBy*` queries.
 - **Coverage rules** (`codecov.yml`, enforced on every PR): total coverage may drop at most 2 points, and the lines a PR changes must be covered at least 80%. Check with `pnpm test:coverage` before opening a PR. The generated `src/shared/api/schema.ts` is excluded.
@@ -343,10 +350,10 @@ What is in `shared/lib/` (check here first, extend rather than duplicate):
 | `numbers.ts`     | `isNumber`: is a string exactly the way JavaScript writes a number                                                                            |
 | `distance.ts`    | `formatKm`                                                                                                                                    |
 | `http.ts`        | `appFetch`, `SessionExpiredError`, `reloadForLogin`: every HTTP request goes through it                                                       |
-| `api-error.ts`   | `readApiErrorCode`: the `code` of an `ApiError` body                                                                                          |
+| `api-error.ts`   | `ApiRequestError`, `ensureOk`, `classifyFailure`, `readApiErrorCode`: how a failed API call is read (never `ApiError.message`)                |
 | `app-refresh.ts` | Registers and runs what a pull-to-refresh does                                                                                                |
 
-`shared/ui/` holds feature-agnostic components (`AppPage`, `ErrorState`, `Placeholder`, `ViewSwitcher`, and `day-picker.ts` with `openDayPicker`, a one-day calendar sheet). Keep this table in step with the folder when you add a file.
+`shared/ui/` holds feature-agnostic components (`AppPage`, `ErrorState`, `Placeholder`, `ViewSwitcher`, `failure-feedback.ts` with `handleCommonFailure`, and `day-picker.ts` with `openDayPicker`, a one-day calendar sheet). Keep this table in step with the folder when you add a file.
 
 The `@/` alias maps to `src/` (`vite.config.ts` and `tsconfig.app.json`), e.g. `import App from '@/app/App.tsx'`.
 
@@ -361,6 +368,11 @@ The `@/` alias maps to `src/` (`vite.config.ts` and `tsconfig.app.json`), e.g. `
 - **Routing:** the router uses in-memory history; only the tab root paths (`/kalender/`, ...) are written to the URL bar by `App.tsx`. Full URLs for pages inside a tab (`browserHistory`) need the server and service worker to fall back to `index.html`; the generated worker already does (`navigateFallback`), so it can be switched on when deep links matter.
 - **No `robots.txt`:** the PWA docs list one among the minimal requirements, but this is a private family app that does not need to be crawled.
 - **Cloudflare Access and AJAX:** when an Access session expires, requests from the page get a redirect to the Cloudflare login, which the browser reports as a CORS error. Cloudflare's [session management docs](https://developers.cloudflare.com/cloudflare-one/access-controls/access-settings/session-management/#ajax) say to send `X-Requested-With: XMLHttpRequest` on AJAX requests to get a clear `401` instead. That is a request header, so it is set by the app's code, not by nginx. The shared helper `appFetch` in `src/shared/lib/http.ts` adds the header and throws `SessionExpiredError` on `401`; send every request through it.
+
+- **New reservation flow** (`features/reservations/`): "Reserver ny" on Home opens `NewReservationPopup` (exported through `features/reservations/index.ts`, with `useCanReserve`, which hides the button for a guest user and until the profile is loaded). It is a two-step Framework7 `Popup` (Periode, Gjester) with a draft in React state, a nested guest sheet and a nested guest popup. The reservation and guest API is in `api/`, the rules (period, times, guests, draft) in `lib/`. The flow is mounted only while open, so every opening starts fresh. Failures follow "One path for a failed API call" above: a period problem from the server (`OVERLAP` and so on) sends the user back to step 1 with the text, other problems show inline above "Opprett reservasjon".
+- **Framework7 `Popup` in the flow:** it renders its content also while closed (mount the content when it opens); it cannot veto a close, so swipe-to-close and backdrop-close are off and only "Avbryt" closes it (with a confirm when the draft has changed); the system back button is not intercepted. **Never put a `<View>` inside a popup or page here**: in the real app a nested view tries to load a route and the app hangs (tests hang too). Use `<Page>` directly in a `Popup`.
+- **Framework7 `Calendar` in the flow:** `disabled` days only block tapping, a range can still cover them (so the overlap is also checked inline); `rangePickerMinDays`/`MaxDays` silently empty the selection on a bad tap and are not used; `change` fires after every tap, so the period is only updated with two dates; on the iOS theme `footer` and `toolbarCloseText` do nothing (no "Ferdig" button). The calendar counts months from 0 in `data-date`.
+- **Framework7 `Toggle`:** its input is controlled, so `event.target.checked` is already reset inside `onChange`; flip from your own state instead.
 
 ## License
 

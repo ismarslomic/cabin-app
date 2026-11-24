@@ -8,7 +8,7 @@ import {
   ListItem,
   Segmented,
 } from 'framework7-react'
-import { periodProblemTexts } from '@/features/reservations/api/error-texts.ts'
+import { type PeriodProblem, periodProblemTexts } from '@/features/reservations/api/error-texts.ts'
 import type { Reservation } from '@/features/reservations/api/types.ts'
 import type { DraftPeriod } from '@/features/reservations/lib/draft.ts'
 import {
@@ -31,6 +31,8 @@ interface PeriodStepProps {
   /** Today in Oslo; the quick picks and the last allowed date follow it. */
   today: string
   reservations: Reservation[]
+  /** A problem the server reported for this period; shown until the period is changed. */
+  serverProblem?: PeriodProblem
   onChange: (period: DraftPeriod) => void
   onNext: () => void
 }
@@ -70,12 +72,13 @@ export default function PeriodStep({
   period,
   today,
   reservations,
+  serverProblem,
   onChange,
   onNext,
 }: PeriodStepProps) {
   const { startDate, endDate, arrivalTime, departureTime } = period
   const picks = quickPicks(today)
-  const problem = periodProblem(startDate, endDate, today, reservations)
+  const problem = periodProblem(startDate, endDate, today, reservations) ?? serverProblem
   const timesValid = isAllowedTime(arrivalTime) && isAllowedTime(departureTime)
 
   const openCalendar = () => {

@@ -1,9 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import {
-  fetchCurrentYearStats,
-  fetchLiveStats,
-  StatsApiError,
-} from '@/features/home/api/stats-api.ts'
+import { fetchCurrentYearStats, fetchLiveStats } from '@/features/home/api/stats-api.ts'
+import { ApiRequestError } from '@/shared/lib/api-error.ts'
 import { SessionExpiredError } from '@/shared/lib/http.ts'
 
 const fetchMock = vi.fn()
@@ -29,12 +26,12 @@ describe('stats api', () => {
     expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/stats/current-year')
   })
 
-  it('throws a StatsApiError on a failed response', async () => {
+  it('throws an ApiRequestError on a failed response', async () => {
     fetchMock.mockResolvedValue(new Response(null, { status: 500 }))
     vi.stubGlobal('fetch', fetchMock)
 
-    await expect(fetchLiveStats()).rejects.toMatchObject({ name: 'StatsApiError', status: 500 })
-    await expect(fetchLiveStats()).rejects.toBeInstanceOf(StatsApiError)
+    await expect(fetchLiveStats()).rejects.toMatchObject({ name: 'ApiRequestError', status: 500 })
+    await expect(fetchLiveStats()).rejects.toBeInstanceOf(ApiRequestError)
   })
 
   it('lets a SessionExpiredError through', async () => {

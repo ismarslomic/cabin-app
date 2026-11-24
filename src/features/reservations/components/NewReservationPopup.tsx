@@ -4,7 +4,6 @@ import {
   ActionsGroup,
   ActionsLabel,
   Block,
-  f7,
   Link,
   Navbar,
   NavLeft,
@@ -12,10 +11,14 @@ import {
   NavTitle,
   Page,
   Popup,
-  View,
 } from 'framework7-react'
-import { useEffect, useEffectEvent, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { reloadProfile, useProfile } from '@/features/profile/index.ts'
+import {
+  describeCreateFailure,
+  type PeriodProblem,
+} from '@/features/reservations/api/error-texts.ts'
+import { createReservation } from '@/features/reservations/api/reservations-api.ts'
 import type { Guest, Reservation } from '@/features/reservations/api/types.ts'
 import { useReservationFlowData } from '@/features/reservations/api/useReservationFlowData.ts'
 import GuestDetail from '@/features/reservations/components/GuestDetail.tsx'
@@ -24,6 +27,7 @@ import GuestsStep from '@/features/reservations/components/GuestsStep.tsx'
 import PeriodStep from '@/features/reservations/components/PeriodStep.tsx'
 import StepIndicator from '@/features/reservations/components/StepIndicator.tsx'
 import {
+  buildCreateRequest,
   defaultGuests,
   initialPeriod,
   isSameGuests,
@@ -33,25 +37,37 @@ import {
   type DraftPeriod,
 } from '@/features/reservations/lib/draft.ts'
 import { addGuests, guestsToAdd, MAX_GUESTS } from '@/features/reservations/lib/guests.ts'
+import { classifyFailure, type Failure } from '@/shared/lib/api-error.ts'
 import { todayInOslo } from '@/shared/lib/dates.ts'
+import { handleCommonFailure } from '@/shared/ui/failure-feedback.ts'
 import ErrorState from '@/shared/ui/ErrorState.tsx'
 
 const STEPS = ['Periode', 'Gjester']
 
 interface FlowNavbarProps {
+  /** The reservation is being sent: going back or cancelling waits until it is done. */
+  busy?: boolean
   /** The step to go back from; no "Tilbake" on the first step. */
   step: number
   onBack: () => void
   onCancel: () => void
 }
 
-function FlowNavbar({ step, onBack, onCancel }: FlowNavbarProps) {
+function FlowNavbar({ busy = false, step, onBack, onCancel }: FlowNavbarProps) {
   return (
     <Navbar>
-      <NavLeft>{step > 0 && <Link onClick={onBack}>Tilbake</Link>}</NavLeft>
+      <NavLeft>
+        {step > 0 && (
+          <Link className={busy ? 'disabled' : undefined} onClick={busy ? undefined : onBack}>
+            Tilbake
+          </Link>
+        )}
+      </NavLeft>
       <NavTitle>Ny reservasjon</NavTitle>
       <NavRight>
-        <Link onClick={onCancel}>Avbryt</Link>
+        <Link className={busy ? 'disabled' : undefined} onClick={busy ? undefined : onCancel}>
+          Avbryt
+        </Link>
       </NavRight>
     </Navbar>
   )
@@ -62,11 +78,19 @@ interface DraftFlowProps {
   reservations: Reservation[]
   guests: Guest[]
   currentUserId: string
+  onCreated: () => void
   onClose: () => void
 }
 
 // The two steps and the draft, once everything is loaded. The draft starts from the family.
-function DraftFlow({ today, reservations, guests, currentUserId, onClose }: DraftFlowProps) {
+function DraftFlow({
+  today,
+  reservations,
+  guests,
+  currentUserId,
+  onCreated,
+  onClose,
+}: DraftFlowProps) {
   const initial = useMemo(() => initialPeriod(today), [today])
   const initialGuests = useMemo(() => defaultGuests(guests, currentUserId), [guests, currentUserId])
   const [period, setPeriod] = useState(initial)
@@ -76,6 +100,18 @@ function DraftFlow({ today, reservations, guests, currentUserId, onClose }: Draf
   const [openGuestId, setOpenGuestId] = useState<string | null>(null)
   const [picking, setPicking] = useState(false)
   const [confirmingCancel, setConfirmingCancel] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string>()
+  const [serverProblem, setServerProblem] = useState<PeriodProblem>()
+  // A request can outlive the flow (the popup was closed meanwhile): then it must not touch the UI.
+  const alive = useRef(false)
+  const sending = useRef(false)
+  useEffect(() => {
+    alive.current = true
+    return () => {
+      alive.current = false
+    }
+  }, [])
 
   const isChanged = !isSamePeriod(period, initial) || !isSameGuests(draftGuests, initialGuests)
 
@@ -89,6 +125,8 @@ function DraftFlow({ today, reservations, guests, currentUserId, onClose }: Draf
   const changePeriod = (next: DraftPeriod) => {
     const { guests: kept, reset } = reconcileGuestDates(draftGuests, next.startDate, next.endDate)
     setPeriod(next)
+    setServerProblem(undefined)
+    setSubmitError(undefined)
     if (reset > 0) setDraftGuests(kept)
     setDatesWereReset(reset > 0)
   }
@@ -98,11 +136,56 @@ function DraftFlow({ today, reservations, guests, currentUserId, onClose }: Draf
       current.map((guest) => (guest.guestId === changed.guestId ? changed : guest)),
     )
     setDatesWereReset(false)
+    setSubmitError(undefined)
   }
 
   const removeGuest = (guestId: string) => {
     setDraftGuests((current) => current.filter((guest) => guest.guestId !== guestId))
     setOpenGuestId(null)
+    setSubmitError(undefined)
+  }
+
+  // Shows a failure the whole app does not handle: where the user can fix it.
+  const showCreateFailure = (failure: Failure) => {
+    const described = describeCreateFailure(failure)
+    if (described.kind === 'period') {
+      setServerProblem(described.problem)
+      setStep(0)
+    } else {
+      setSubmitError(described.text)
+    }
+  }
+
+  const handleSubmitFailure = (error: unknown) => {
+    const failure = classifyFailure(error)
+    const handled = handleCommonFailure(failure, {
+      networkToast: true,
+      onForbiddenDismissed: onClose,
+    })
+    if (!handled) showCreateFailure(failure)
+    setSubmitting(false)
+  }
+
+  const submit = async () => {
+    // A ref, not the state: two taps before the next render must not send twice.
+    if (sending.current) return
+    sending.current = true
+    setSubmitting(true)
+    setSubmitError(undefined)
+
+    const request = buildCreateRequest(period, draftGuests)
+    try {
+      await createReservation(request)
+    } catch (error) {
+      sending.current = false
+      // The flow may be gone (popup closed meanwhile): then there is no UI to update.
+      if (alive.current) handleSubmitFailure(error)
+      return
+    }
+
+    // The reservation exists. Home needs to know, but a popup opened since is not ours to close.
+    onCreated()
+    if (alive.current) onClose()
   }
 
   const openGuest =
@@ -111,6 +194,7 @@ function DraftFlow({ today, reservations, guests, currentUserId, onClose }: Draf
   return (
     <Page>
       <FlowNavbar
+        busy={submitting}
         step={step}
         onBack={() => {
           setStep(step - 1)
@@ -123,6 +207,7 @@ function DraftFlow({ today, reservations, guests, currentUserId, onClose }: Draf
           period={period}
           today={today}
           reservations={reservations}
+          serverProblem={serverProblem}
           onChange={changePeriod}
           onNext={() => {
             setStep(1)
@@ -136,10 +221,15 @@ function DraftFlow({ today, reservations, guests, currentUserId, onClose }: Draf
           period={period}
           today={today}
           datesWereReset={datesWereReset}
+          submitting={submitting}
+          submitError={submitError}
           onOpenGuest={setOpenGuestId}
           onRemoveGuest={removeGuest}
           onAddGuest={() => {
             setPicking(true)
+          }}
+          onSubmit={() => {
+            void submit()
           }}
         />
       )}
@@ -190,23 +280,15 @@ function DraftFlow({ today, reservations, guests, currentUserId, onClose }: Draf
 }
 
 interface FlowProps {
+  onCreated: () => void
   onClose: () => void
 }
 
 // Loads what the flow needs (reservations, guests, the current user), then shows the draft flow.
-function ReservationFlow({ onClose }: FlowProps) {
+function ReservationFlow({ onCreated, onClose }: FlowProps) {
   const today = useMemo(() => todayInOslo(), [])
-  const { data, reload } = useReservationFlowData(today)
+  const { data, reload } = useReservationFlowData(today, onClose)
   const profile = useProfile()
-
-  // No access: say so and leave. `onClose` may change between renders, the alert must not repeat.
-  const leaveForbidden = useEffectEvent(() => {
-    f7.dialog.alert('Du har ikke tilgang til appen.', onClose)
-  })
-  const forbidden = data.status === 'forbidden'
-  useEffect(() => {
-    if (forbidden) leaveForbidden()
-  }, [forbidden])
 
   if (data.status === 'ready' && profile.status === 'ready') {
     return (
@@ -215,6 +297,7 @@ function ReservationFlow({ onClose }: FlowProps) {
         reservations={data.reservations}
         guests={data.guests}
         currentUserId={profile.profile.id}
+        onCreated={onCreated}
         onClose={onClose}
       />
     )
@@ -244,13 +327,19 @@ function ReservationFlow({ onClose }: FlowProps) {
 
 interface NewReservationPopupProps {
   opened: boolean
+  /** A reservation was created; the popup is closed right after. */
+  onCreated: () => void
   onClose: () => void
 }
 
 // The flow for a new reservation, in a modal. Only the "Avbryt" button closes it: swipe-to-close
 // and a tap on the backdrop would throw the draft away without asking (Framework7 has no way to
 // veto them).
-export default function NewReservationPopup({ opened, onClose }: NewReservationPopupProps) {
+export default function NewReservationPopup({
+  opened,
+  onCreated,
+  onClose,
+}: NewReservationPopupProps) {
   // Framework7 renders a popup's content also while it is closed. The flow is mounted when the
   // popup opens and removed when it has closed, so every opening starts with today's date, a
   // fresh draft and a fresh load.
@@ -268,7 +357,7 @@ export default function NewReservationPopup({ opened, onClose }: NewReservationP
         if (opened) onClose()
       }}
     >
-      <View>{mounted && <ReservationFlow onClose={onClose} />}</View>
+      {mounted && <ReservationFlow onCreated={onCreated} onClose={onClose} />}
     </Popup>
   )
 }

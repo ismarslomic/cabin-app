@@ -84,6 +84,7 @@ Group by feature, not by technical layer. Full rules in `README.md` ("Folder str
 
 - Before adding or changing any error, loading or confirmation UI, read "User feedback and errors" in `README.md` and follow it: inline errors where the problem is, toasts at `top` only for transient failures, modal alerts only for blocking cases, never show `ApiError.message`.
 - Error texts per `ApiError.code` live in the feature (`features/<name>/api/`); generic ones in `shared/`.
+- **One path for failed API calls.** API files turn a bad answer into `ApiRequestError { status, code }` with `ensureOk(response)` (`shared/lib/api-error.ts`). Callers run `classifyFailure(error)` (`session`, `forbidden`, `network` or `api`), then `handleCommonFailure(...)` (`shared/ui/failure-feedback.ts`), which reloads for login, shows the no-access alert or the network toast. A feature writes only what is its own: the `ApiError.code` to text mapping and where the text goes. Never write `instanceof SessionExpiredError`, `reloadForLogin()`, a `403` check or a failure toast in a feature; extend the shared helper if a case is missing.
 
 ## Adding a feature
 

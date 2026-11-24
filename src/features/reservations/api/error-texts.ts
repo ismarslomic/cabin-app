@@ -1,5 +1,4 @@
-import { ReservationApiError } from '@/features/reservations/api/reservations-api.ts'
-import { SessionExpiredError } from '@/shared/lib/http.ts'
+import type { Failure } from '@/shared/lib/api-error.ts'
 
 /** Problems with the chosen period. They are fixed on the period step. */
 export type PeriodProblem = 'END_BEFORE_START' | 'TOO_LONG' | 'TOO_FAR_AHEAD' | 'OVERLAP'
@@ -11,17 +10,15 @@ export const periodProblemTexts: Record<PeriodProblem, string> = {
   OVERLAP: 'Perioden overlapper en annen reservasjon. Velg andre datoer.',
 }
 
+/**
+ * What a failed create shows, for a failure that is not handled for the whole app (session, no
+ * access, no network: see `handleCommonFailure`).
+ */
 export type CreateFailure =
   /** Fixed on the period step. */
   | { kind: 'period'; problem: PeriodProblem }
   /** Shown inline above the submit button. */
   | { kind: 'inline'; text: string }
-  /** Blocking alert: the user has no access. */
-  | { kind: 'forbidden' }
-  /** The session has expired: reload the page so Cloudflare Access shows the login. */
-  | { kind: 'session' }
-  /** Not an API answer (no network): a transient toast. */
-  | { kind: 'network' }
 
 const generalText = 'Kunne ikke opprette reservasjonen. Prøv igjen.'
 
@@ -40,20 +37,18 @@ const inlineTexts: Record<string, string> = {
 }
 
 /** Maps a failed create request to what the UI shows. Never uses `ApiError.message`. */
-export function describeCreateFailure(error: unknown): CreateFailure {
-  if (error instanceof SessionExpiredError) return { kind: 'session' }
-  if (!(error instanceof ReservationApiError)) return { kind: 'network' }
-  if (error.status === 403) return { kind: 'forbidden' }
+export function describeCreateFailure(failure: Failure): CreateFailure {
+  if (failure.kind !== 'api') return { kind: 'inline', text: generalText }
 
   // A 409 is an overlap, also when the body could not be read.
-  const problem = error.code
-    ? periodCodes[error.code]
-    : error.status === 409
+  const problem = failure.code
+    ? periodCodes[failure.code]
+    : failure.status === 409
       ? 'OVERLAP'
       : undefined
   if (problem) return { kind: 'period', problem }
 
   const text =
-    (error.code && inlineTexts[error.code]) || (error.status === 503 ? busyText : generalText)
+    (failure.code && inlineTexts[failure.code]) || (failure.status === 503 ? busyText : generalText)
   return { kind: 'inline', text }
 }

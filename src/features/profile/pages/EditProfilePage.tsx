@@ -1,23 +1,19 @@
 import type { Router } from 'framework7/types'
 import { Check } from 'lucide-react'
-import {
-  Block,
-  f7,
-  Link,
-  List,
-  ListInput,
-  Navbar,
-  NavRight,
-  Page,
-  Preloader,
-} from 'framework7-react'
+import { Block, Link, List, ListInput, Navbar, NavRight, Page, Preloader } from 'framework7-react'
 import { useState } from 'react'
-import { fetchProfile, ProfileApiError, updateProfile } from '@/features/profile/api/profile-api.ts'
+import { fetchProfile, updateProfile } from '@/features/profile/api/profile-api.ts'
 import { setProfile, useProfile } from '@/features/profile/api/profile-store.ts'
 import type { Gender, Profile } from '@/features/profile/api/types.ts'
 import { birthYearErrorMessage, parseBirthYear } from '@/features/profile/birth-year.ts'
 import { genderLabels } from '@/features/profile/labels.ts'
-import { reloadForLogin, SessionExpiredError } from '@/shared/lib/http.ts'
+import {
+  isVersionConflict,
+  saveFailureText,
+  versionConflictText,
+} from '@/features/profile/api/error-texts.ts'
+import { classifyFailure } from '@/shared/lib/api-error.ts'
+import { handleCommonFailure } from '@/shared/ui/failure-feedback.ts'
 
 function EditScreen({ profile, f7router }: { profile: Profile; f7router: Router.Router }) {
   const [firstName, setFirstName] = useState(profile.firstName)
@@ -38,7 +34,7 @@ function EditScreen({ profile, f7router }: { profile: Profile; f7router: Router.
   const canSave = valid && changed && !saving
 
   // The profile changed elsewhere: fetch the latest and reset the form to it.
-  const resetToLatest = async (message: string) => {
+  const resetToLatest = async () => {
     try {
       const latest = await fetchProfile()
       setProfile(latest)
@@ -46,13 +42,11 @@ function EditScreen({ profile, f7router }: { profile: Profile; f7router: Router.
       setLastName(latest.lastName)
       setBirthYear(String(latest.birthYear))
       setGender(latest.gender)
-      setError(message)
+      setError(versionConflictText)
     } catch (e) {
-      if (e instanceof SessionExpiredError) {
-        reloadForLogin()
-        return
+      if (!handleCommonFailure(classifyFailure(e))) {
+        setError('Kunne ikke hente nyeste profil. Prøv igjen senere.')
       }
-      setError('Kunne ikke hente nyeste profil. Prøv igjen senere.')
     }
     setSaving(false)
   }
@@ -69,16 +63,12 @@ function EditScreen({ profile, f7router }: { profile: Profile; f7router: Router.
       setProfile(saved)
       f7router.back()
     } catch (e) {
-      if (e instanceof ProfileApiError && e.status === 412) {
-        await resetToLatest(e.message)
+      const failure = classifyFailure(e)
+      if (failure.kind === 'api' && isVersionConflict(failure)) {
+        await resetToLatest()
         return
       }
-      if (e instanceof SessionExpiredError) {
-        reloadForLogin()
-        return
-      }
-      if (e instanceof ProfileApiError && e.status === 403) f7.dialog.alert(e.message)
-      setError(e instanceof ProfileApiError ? e.message : 'Kunne ikke lagre profilen.')
+      if (!handleCommonFailure(failure)) setError(saveFailureText(failure))
       setSaving(false)
     }
   }

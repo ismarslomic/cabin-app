@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { resetProfileStore } from '@/features/profile/api/profile-store.ts'
 import { resetGuestsCache } from '@/features/reservations/api/guests-api.ts'
 import { reloadForLogin, SessionExpiredError } from '@/shared/lib/http.ts'
+import { NETWORK_TEXT, NO_ACCESS_TEXT, resetFailureFeedback } from '@/shared/ui/failure-feedback.ts'
 import NewReservationPopup from '@/features/reservations/components/NewReservationPopup.tsx'
 import { renderWithF7 } from '@/test/render-f7.tsx'
 
@@ -50,11 +51,20 @@ const allGuests = [
 interface Stub {
   reservations?: unknown[]
   guests?: unknown[]
+  /** The answer to creating a reservation; a created reservation by default. */
+  create?: (body: unknown) => Promise<Response>
 }
 
 // Answers by URL; a new Response per call (StrictMode runs effects twice).
-function stubReservations({ reservations = [], guests = allGuests }: Stub = {}) {
-  fetchMock.mockImplementation((url: string) => {
+function stubReservations({
+  reservations = [],
+  guests = allGuests,
+  create = () => Promise.resolve(Response.json({ id: 'new' }, { status: 201 })),
+}: Stub = {}) {
+  fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+    if (url === '/api/reservations' && init?.method === 'POST') {
+      return create(JSON.parse(init.body as string))
+    }
     if (url.startsWith('/api/reservations')) return Promise.resolve(Response.json(reservations))
     if (url === '/api/guests') return Promise.resolve(Response.json(guests))
     if (url === '/api/me') return Promise.resolve(Response.json({ id: 'per', role: 'FAMILY_USER' }))
@@ -63,13 +73,13 @@ function stubReservations({ reservations = [], guests = allGuests }: Stub = {}) 
   vi.stubGlobal('fetch', fetchMock)
 }
 
-function renderPopup(onClose = vi.fn()) {
-  renderWithF7(<NewReservationPopup opened onClose={onClose} />)
+function renderPopup(onClose = vi.fn(), onCreated = vi.fn()) {
+  renderWithF7(<NewReservationPopup opened onCreated={onCreated} onClose={onClose} />)
   return onClose
 }
 
 // A parent that opens the popup, as Home will.
-function Harness() {
+function Harness({ onCreated = vi.fn() }: { onCreated?: () => void }) {
   const [opened, setOpened] = useState(false)
   return (
     <>
@@ -83,6 +93,7 @@ function Harness() {
       </button>
       <NewReservationPopup
         opened={opened}
+        onCreated={onCreated}
         onClose={() => {
           setOpened(false)
         }}
@@ -103,6 +114,7 @@ describe('NewReservationPopup', () => {
     fetchMock.mockReset()
     resetGuestsCache()
     resetProfileStore()
+    resetFailureFeedback()
     vi.mocked(reloadForLogin).mockReset()
   })
 
@@ -358,6 +370,221 @@ describe('NewReservationPopup', () => {
       await user.click(screen.getByRole('link', { name: 'Avbryt' }))
 
       expect(await screen.findByText('Forkast reservasjonen?')).toBeInTheDocument()
+    })
+  })
+
+  describe('submitting', () => {
+    const apiError = (status: number, code: string) =>
+      Promise.resolve(Response.json({ code, message: 'English' }, { status }))
+
+    async function submit(user: ReturnType<typeof userEvent.setup>) {
+      await user.click(await screen.findByRole('link', { name: 'Neste' }))
+      await user.click(screen.getByRole('link', { name: 'Opprett reservasjon' }))
+    }
+
+    it('sends the period and the guests, then tells the parent and closes', async () => {
+      const bodies: unknown[] = []
+      stubReservations({
+        create: (body) => {
+          bodies.push(body)
+          return Promise.resolve(Response.json({ id: 'new' }, { status: 201 }))
+        },
+      })
+      const user = userEvent.setup()
+      const onClose = vi.fn()
+      const onCreated = vi.fn()
+      renderPopup(onClose, onCreated)
+
+      await submit(user)
+
+      await waitFor(() => {
+        expect(onCreated).toHaveBeenCalledOnce()
+      })
+      expect(onClose).toHaveBeenCalledOnce()
+      expect(bodies).toEqual([
+        {
+          startTime: '2026-11-27T15:00:00Z',
+          endTime: '2026-11-29T12:00:00Z',
+          guests: [
+            { guestId: 'kari', fromDate: null, toDate: null },
+            { guestId: 'ola', fromDate: null, toDate: null },
+            { guestId: 'per', fromDate: null, toDate: null },
+          ],
+        },
+      ])
+    })
+
+    it('shows a preloader and sends only once while waiting', async () => {
+      const create = vi.fn(() => new Promise<Response>(() => undefined))
+      stubReservations({ create })
+      const user = userEvent.setup()
+      renderPopup()
+
+      await submit(user)
+      const button = document.querySelector('.preloader')?.closest('a')
+      expect(button).toHaveClass('disabled')
+      if (button) await user.click(button)
+
+      expect(create).toHaveBeenCalledOnce()
+    })
+
+    it('does not cancel or go back while the reservation is being sent', async () => {
+      stubReservations({ create: () => new Promise<Response>(() => undefined) })
+      const user = userEvent.setup()
+      const onClose = renderPopup()
+
+      await submit(user)
+      await user.click(screen.getByRole('link', { name: 'Avbryt' }))
+      await user.click(screen.getByRole('link', { name: 'Tilbake' }))
+
+      expect(onClose).not.toHaveBeenCalled()
+      expect(screen.getByText('Gjester (3)')).toBeInTheDocument()
+    })
+
+    it('goes back to the period step when the period overlaps another reservation', async () => {
+      stubReservations({ create: () => apiError(409, 'OVERLAP') })
+      const user = userEvent.setup()
+      renderPopup()
+
+      await submit(user)
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'Perioden overlapper en annen reservasjon. Velg andre datoer.',
+      )
+      expect(screen.getByRole('link', { name: 'Neste' })).toHaveClass('disabled')
+      // Changing the period takes the message away.
+      await user.click(screen.getByRole('link', { name: 'Neste helg' }))
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'Neste' })).not.toHaveClass('disabled')
+    })
+
+    it('shows the problem above the button and lets the user try again', async () => {
+      stubReservations({ create: () => apiError(400, 'UNKNOWN_GUEST') })
+      const user = userEvent.setup()
+      renderPopup()
+
+      await submit(user)
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'En av gjestene finnes ikke lenger. Fjern gjesten og prøv igjen.',
+      )
+      expect(screen.getByText('Gjester (3)')).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'Opprett reservasjon' })).not.toHaveClass('disabled')
+    })
+
+    it('clears the problem on a retry and closes when it then works', async () => {
+      let attempt = 0
+      stubReservations({
+        create: () =>
+          ++attempt === 1
+            ? apiError(400, 'UNKNOWN_GUEST')
+            : Promise.resolve(new Response(null, { status: 201 })),
+      })
+      const user = userEvent.setup()
+      const onCreated = vi.fn()
+      renderPopup(vi.fn(), onCreated)
+
+      await submit(user)
+      expect(await screen.findByRole('alert')).toBeInTheDocument()
+      await user.click(screen.getByRole('link', { name: 'Opprett reservasjon' }))
+
+      await waitFor(() => {
+        expect(onCreated).toHaveBeenCalledOnce()
+      })
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    })
+
+    it('takes the problem away when the guest list changes', async () => {
+      stubReservations({ create: () => apiError(400, 'UNKNOWN_GUEST') })
+      const user = userEvent.setup()
+      renderPopup()
+
+      await submit(user)
+      await screen.findByRole('alert')
+      await user.click(screen.getByText('Ola Test'))
+      await user.click(screen.getByRole('link', { name: 'Slett gjest fra reservasjon' }))
+
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    })
+
+    it('lets the user try again after a network failure', async () => {
+      stubReservations({ create: () => Promise.reject(new TypeError('Failed to fetch')) })
+      const user = userEvent.setup()
+      renderPopup()
+
+      await submit(user)
+      await screen.findByText(NETWORK_TEXT)
+
+      expect(screen.getByRole('link', { name: 'Opprett reservasjon' })).not.toHaveClass('disabled')
+    })
+
+    it('does not close a popup opened since when an old request ends', async () => {
+      let finish: (response: Response) => void = () => undefined
+      stubReservations({
+        create: () =>
+          new Promise<Response>((resolve) => {
+            finish = resolve
+          }),
+      })
+      const user = userEvent.setup()
+      const onCreated = vi.fn()
+      renderWithF7(<Harness onCreated={onCreated} />)
+      await user.click(screen.getByRole('button', { name: 'Åpne' }))
+      await submit(user)
+
+      // The popup is closed from outside while the request is still running, then opened again.
+      act(() => {
+        f7.popup.close(flowPopup)
+      })
+      act(() => {
+        document.querySelector(flowPopup)?.dispatchEvent(new Event('transitionend'))
+      })
+      await user.click(await screen.findByRole('button', { name: 'Åpne' }))
+      expect(await screen.findByText('Hurtigvalg')).toBeInTheDocument()
+      finish(new Response(null, { status: 201 }))
+
+      await waitFor(() => {
+        expect(onCreated).toHaveBeenCalledOnce()
+      })
+      expect(screen.getByText('Hurtigvalg')).toBeInTheDocument()
+    })
+
+    it('shows a toast for a network failure and keeps the draft', async () => {
+      stubReservations({ create: () => Promise.reject(new TypeError('Failed to fetch')) })
+      const user = userEvent.setup()
+      renderPopup()
+
+      await submit(user)
+
+      expect(await screen.findByText(NETWORK_TEXT)).toBeInTheDocument()
+      expect(screen.getByText('Gjester (3)')).toBeInTheDocument()
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    })
+
+    it('says so and closes when the user may not create reservations', async () => {
+      stubReservations({ create: () => apiError(403, 'FORBIDDEN') })
+      const user = userEvent.setup()
+      const onClose = renderPopup()
+
+      await submit(user)
+      await user.click(await screen.findByText('OK'))
+
+      expect(onClose).toHaveBeenCalledOnce()
+    })
+
+    it('reloads the page for the login when the session has expired', async () => {
+      stubReservations({ create: () => Promise.reject(new SessionExpiredError()) })
+      const user = userEvent.setup()
+      renderPopup()
+
+      await submit(user)
+
+      await waitFor(() => {
+        expect(reloadForLogin).toHaveBeenCalled()
+      })
+      expect(screen.queryByText(NO_ACCESS_TEXT)).not.toBeInTheDocument()
+      expect(screen.queryByText(NETWORK_TEXT)).not.toBeInTheDocument()
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     })
   })
 

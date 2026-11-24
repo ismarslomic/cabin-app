@@ -1,28 +1,29 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useEffectEvent, useState } from 'react'
 import { loadGuests } from '@/features/reservations/api/guests-api.ts'
-import {
-  fetchReservations,
-  ReservationApiError,
-} from '@/features/reservations/api/reservations-api.ts'
+import { fetchReservations } from '@/features/reservations/api/reservations-api.ts'
 import type { Guest, Reservation } from '@/features/reservations/api/types.ts'
 import { maxDate } from '@/features/reservations/lib/period.ts'
 import { addDays } from '@/shared/lib/dates.ts'
-import { reloadForLogin, SessionExpiredError } from '@/shared/lib/http.ts'
+import { handleLoadFailure } from '@/shared/ui/failure-feedback.ts'
 
 export type ReservationFlowData =
   | { status: 'loading' }
   | { status: 'error' }
-  /** The user may not create reservations (403). */
-  | { status: 'forbidden' }
   | { status: 'ready'; reservations: Reservation[]; guests: Guest[] }
 
 /**
  * What the flow needs when it opens: the coming reservations, to show booked days, from `today`
- * (the same day the flow uses for its quick picks), and all guests. `reload` is the retry after an error.
+ * (the same day the flow uses for its quick picks), and all guests. `reload` is the retry after an
+ * error. A session or access problem is handled for the whole app; `onForbiddenDismissed` runs
+ * when the user has read the no-access alert.
  */
-export function useReservationFlowData(today: string) {
+export function useReservationFlowData(today: string, onForbiddenDismissed: () => void) {
   const [data, setData] = useState<ReservationFlowData>({ status: 'loading' })
   const [attempt, setAttempt] = useState(0)
+
+  const handleFailure = useEffectEvent((error: unknown) =>
+    handleLoadFailure(error, { onForbiddenDismissed }),
+  )
 
   useEffect(() => {
     let active = true
@@ -33,13 +34,9 @@ export function useReservationFlowData(today: string) {
         if (active) setData({ status: 'ready', reservations, guests })
       })
       .catch((error: unknown) => {
-        if (error instanceof SessionExpiredError) {
-          reloadForLogin()
-          return
-        }
         if (!active) return
-        const forbidden = error instanceof ReservationApiError && error.status === 403
-        setData({ status: forbidden ? 'forbidden' : 'error' })
+        // The page may be reloading for the login; otherwise an error with a retry (behind the alert).
+        setData({ status: handleFailure(error) })
       })
     return () => {
       active = false

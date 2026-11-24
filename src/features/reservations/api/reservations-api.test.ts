@@ -2,8 +2,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   createReservation,
   fetchReservations,
-  ReservationApiError,
 } from '@/features/reservations/api/reservations-api.ts'
+import { ApiRequestError } from '@/shared/lib/api-error.ts'
 import { SessionExpiredError } from '@/shared/lib/http.ts'
 
 const fetchMock = vi.fn()
@@ -23,11 +23,11 @@ describe('reservations api', () => {
     expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/reservations?from=2026-11-23&to=2028-11-24')
   })
 
-  it('posts a reservation as JSON and returns the created one', async () => {
+  it('posts a reservation as JSON and does not need to read the answer', async () => {
     fetchMock.mockResolvedValue(Response.json({ id: 'new' }, { status: 201 }))
     vi.stubGlobal('fetch', fetchMock)
 
-    await expect(createReservation(request)).resolves.toEqual({ id: 'new' })
+    await expect(createReservation(request)).resolves.toBeUndefined()
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
     expect(url).toBe('/api/reservations')
     expect(init.method).toBe('POST')
@@ -40,7 +40,7 @@ describe('reservations api', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     await expect(createReservation(request)).rejects.toMatchObject({
-      name: 'ReservationApiError',
+      name: 'ApiRequestError',
       status: 409,
       code: 'OVERLAP',
     })
@@ -51,7 +51,7 @@ describe('reservations api', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     const error = await fetchReservations('2026-11-23', '2026-11-24').catch((e: unknown) => e)
-    expect(error).toBeInstanceOf(ReservationApiError)
+    expect(error).toBeInstanceOf(ApiRequestError)
     expect(error).toMatchObject({ status: 502, code: undefined })
   })
 

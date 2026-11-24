@@ -1,4 +1,5 @@
-import { appFetch, SessionExpiredError } from '@/shared/lib/http.ts'
+import { classifyFailure } from '@/shared/lib/api-error.ts'
+import { appFetch } from '@/shared/lib/http.ts'
 
 /** How often an open app looks for a new version (it also checks when it returns to the foreground). */
 export const UPDATE_CHECK_INTERVAL_MS = 10 * 60 * 1000
@@ -23,7 +24,7 @@ export async function checkForUpdate(
     await registration.update()
     return registration.installing || registration.waiting ? 'update-found' : 'up-to-date'
   } catch (error) {
-    if (error instanceof SessionExpiredError) return 'session-expired'
+    if (classifyFailure(error).kind === 'session') return 'session-expired'
     // Network trouble: try again at the next check.
     return 'skipped'
   }

@@ -10,7 +10,11 @@ import ReserveButton from '@/features/home/components/ReserveButton.tsx'
 import YearStats from '@/features/home/components/YearStats.tsx'
 import { pickHero } from '@/features/home/components/heroes.ts'
 import { ProfileNavRight } from '@/features/profile/index.ts'
-import { currentStatusText, nextStatusText } from '@/features/reservations/index.ts'
+import {
+  currentStatusText,
+  NewReservationPopup,
+  nextStatusText,
+} from '@/features/reservations/index.ts'
 import AppPage from '@/shared/ui/AppPage.tsx'
 import './HomePage.css'
 
@@ -18,6 +22,10 @@ export default function HomePage() {
   // A random photo per app launch; pulling down to refresh picks another one.
   const [hero, setHero] = useState(() => pickHero())
   const { state, reload } = useHomeStats()
+  const [reserving, setReserving] = useState(false)
+  const openReservation = () => {
+    setReserving(true)
+  }
 
   return (
     <AppPage
@@ -75,11 +83,14 @@ export default function HomePage() {
               order={state.live.nextReservation.reservationOrderInYear}
             />
           )}
-          {!state.live.currentReservation && !state.live.nextReservation && <EmptyReservations />}
+          {!state.live.currentReservation && !state.live.nextReservation && (
+            <EmptyReservations onReserve={openReservation} />
+          )}
           {(state.live.currentReservation || state.live.nextReservation) && (
             <ReserveButton
               hasCurrent={!!state.live.currentReservation}
               hasNext={!!state.live.nextReservation}
+              onReserve={openReservation}
             />
           )}
           <div className="home-year">
@@ -88,6 +99,16 @@ export default function HomePage() {
           </div>
         </>
       )}
+      <NewReservationPopup
+        opened={reserving}
+        onCreated={() => {
+          // The new reservation can be the next visit: fetch the stats again.
+          void reload()
+        }}
+        onClose={() => {
+          setReserving(false)
+        }}
+      />
     </AppPage>
   )
 }
