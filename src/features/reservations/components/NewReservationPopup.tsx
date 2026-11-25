@@ -11,9 +11,9 @@ import { useReservationFlowData } from '@/features/reservations/api/useReservati
 import FlowSkeleton from '@/features/reservations/components/FlowSkeleton.tsx'
 import GuestDetail from '@/features/reservations/components/GuestDetail.tsx'
 import GuestPicker from '@/features/reservations/components/GuestPicker.tsx'
-import GuestsStep from '@/features/reservations/components/GuestsStep.tsx'
+import GuestsSection from '@/features/reservations/components/GuestsSection.tsx'
 import '@/features/reservations/components/NewReservationPopup.css'
-import PeriodStep from '@/features/reservations/components/PeriodStep.tsx'
+import PeriodSection from '@/features/reservations/components/PeriodSection.tsx'
 import {
   buildCreateRequest,
   defaultGuests,
@@ -175,14 +175,14 @@ function DraftFlow({
           },
         }}
       />
-      <PeriodStep
+      <PeriodSection
         period={period}
         today={today}
         reservations={reservations}
         message={periodIssue}
         onChange={changePeriod}
       />
-      <GuestsStep
+      <GuestsSection
         guests={guests}
         draftGuests={draftGuests}
         period={period}

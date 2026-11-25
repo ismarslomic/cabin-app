@@ -1,7 +1,7 @@
 import { Block, BlockTitle, Button, f7, List, ListItem, Segmented } from 'framework7-react'
 import { CircleAlert } from 'lucide-react'
 import { useEffect, useRef } from 'react'
-import '@/features/reservations/components/PeriodStep.css'
+import '@/features/reservations/components/PeriodSection.css'
 import '@/shared/ui/chips.css'
 import type { Reservation } from '@/features/reservations/api/types.ts'
 import type { DraftPeriod } from '@/features/reservations/lib/draft.ts'
@@ -15,7 +15,7 @@ import {
   toIsoDate,
 } from '@/shared/lib/dates.ts'
 
-interface PeriodStepProps {
+interface PeriodSectionProps {
   period: DraftPeriod
   /** Today in Oslo; the quick picks and the last allowed date follow it. */
   today: string
@@ -75,13 +75,13 @@ function renderStayRow({
 }
 
 // The period: the days (quick picks or a range in the calendar), the times and the length of the stay.
-export default function PeriodStep({
+export default function PeriodSection({
   period,
   today,
   reservations,
   message,
   onChange,
-}: PeriodStepProps) {
+}: PeriodSectionProps) {
   const { startDate, endDate, arrivalTime, departureTime } = period
   const picks = quickPicks(today)
   const nights = nightsBetween(startDate, endDate)

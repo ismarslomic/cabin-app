@@ -9,7 +9,7 @@ import {
   SwipeoutButton,
 } from 'framework7-react'
 import { CircleAlert, CirclePlus, Trash2, TriangleAlert, X } from 'lucide-react'
-import '@/features/reservations/components/GuestsStep.css'
+import '@/features/reservations/components/GuestsSection.css'
 import { Avatar } from '@/features/profile/index.ts'
 import type { Guest } from '@/features/reservations/api/types.ts'
 import type { DraftGuest, DraftPeriod } from '@/features/reservations/lib/draft.ts'
@@ -20,7 +20,7 @@ import {
   resetDatesText,
 } from '@/features/reservations/lib/guests.ts'
 
-interface GuestsStepProps {
+interface GuestsSectionProps {
   /** Every guest, to look up names. */
   guests: Guest[]
   draftGuests: DraftGuest[]
@@ -38,7 +38,7 @@ interface GuestsStepProps {
 }
 
 // The guests of the reservation. Tap a guest for own dates; swipe to remove.
-export default function GuestsStep({
+export default function GuestsSection({
   guests,
   draftGuests,
   period,
@@ -49,7 +49,7 @@ export default function GuestsStep({
   onRemoveGuest,
   onAddGuest,
   onDismissResetNote,
-}: GuestsStepProps) {
+}: GuestsSectionProps) {
   const byId = new Map(guests.map((guest) => [guest.id, guest]))
   // A reservation needs at least one guest.
   const canRemove = draftGuests.length > 1

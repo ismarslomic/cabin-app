@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { Page } from 'framework7-react'
 import { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
-import PeriodStep from '@/features/reservations/components/PeriodStep.tsx'
+import PeriodSection from '@/features/reservations/components/PeriodSection.tsx'
 import type { DraftPeriod } from '@/features/reservations/lib/draft.ts'
 import { periodIssueText } from '@/features/reservations/lib/period-issue.ts'
 import { renderWithF7 } from '@/test/render-f7.tsx'
@@ -18,11 +18,11 @@ const weekend: DraftPeriod = {
 }
 
 // Keeps the period in state like the flow does, and reports every change to the spy.
-function Step({ initial, onChange }: StepProps) {
+function Section({ initial, onChange }: SectionProps) {
   const [period, setPeriod] = useState(initial)
   return (
     <Page>
-      <PeriodStep
+      <PeriodSection
         period={period}
         today={TODAY}
         reservations={[]}
@@ -36,20 +36,20 @@ function Step({ initial, onChange }: StepProps) {
   )
 }
 
-interface StepProps {
+interface SectionProps {
   initial: DraftPeriod
   onChange: (period: DraftPeriod) => void
 }
 
-function renderStep(initial: DraftPeriod = weekend) {
+function renderSection(initial: DraftPeriod = weekend) {
   const onChange = vi.fn()
-  renderWithF7(<Step initial={initial} onChange={onChange} />)
+  renderWithF7(<Section initial={initial} onChange={onChange} />)
   return { onChange }
 }
 
-describe('PeriodStep', () => {
+describe('PeriodSection', () => {
   it('shows arrival and departure as a day and a time each', async () => {
-    renderStep()
+    renderSection()
 
     expect(await screen.findByText('Ankomst')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'fre 27. nov.' })).toBeInTheDocument()
@@ -61,7 +61,7 @@ describe('PeriodStep', () => {
   })
 
   it('reports a quick pick as a new period, keeping the times', async () => {
-    const { onChange } = renderStep({ ...weekend, arrivalTime: '18:30' })
+    const { onChange } = renderSection({ ...weekend, arrivalTime: '18:30' })
 
     await userEvent.click(await screen.findByRole('link', { name: 'Neste helg' }))
 
@@ -74,7 +74,7 @@ describe('PeriodStep', () => {
   })
 
   it('reports a new departure time', async () => {
-    const { onChange } = renderStep()
+    const { onChange } = renderSection()
 
     const departure = await screen.findByLabelText('Avreise kl.')
     await userEvent.clear(departure)
@@ -95,26 +95,26 @@ describe('PeriodStep', () => {
       'Du kan ikke reservere mer enn 2 år fram i tid.',
     ],
   ])('shows why the period %o cannot be used', async (dates, text) => {
-    renderStep({ ...weekend, ...dates })
+    renderSection({ ...weekend, ...dates })
 
     expect(await screen.findByRole('alert')).toHaveTextContent(text)
   })
 
   it('has no length when the end is not after the start, but keeps it for other problems', async () => {
-    renderStep({ ...weekend, endDate: '2026-11-27' })
+    renderSection({ ...weekend, endDate: '2026-11-27' })
     await screen.findByRole('alert')
     expect(screen.queryByText('Varighet')).not.toBeInTheDocument()
   })
 
   it('keeps the length visible while another problem is shown', async () => {
-    renderStep({ ...weekend, startDate: '2026-12-01', endDate: '2027-01-31' })
+    renderSection({ ...weekend, startDate: '2026-12-01', endDate: '2027-01-31' })
 
     expect(await screen.findByRole('alert')).toBeInTheDocument()
     expect(screen.getByText('Varighet')).toBeInTheDocument()
   })
 
   it('writes one night in the singular', async () => {
-    renderStep({ ...weekend, endDate: '2026-11-28' })
+    renderSection({ ...weekend, endDate: '2026-11-28' })
 
     expect(await screen.findByText('1 natt')).toBeInTheDocument()
   })

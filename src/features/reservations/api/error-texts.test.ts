@@ -6,7 +6,7 @@ const api = (status: number, code?: string): Failure => ({ kind: 'api', status, 
 
 describe('describeCreateFailure', () => {
   it.each(['OVERLAP', 'TOO_LONG', 'TOO_FAR_AHEAD', 'END_BEFORE_START'])(
-    'sends %s back to the period step',
+    'marks %s as a period problem',
     (code) => {
       expect(describeCreateFailure(api(400, code))).toEqual({ kind: 'period', problem: code })
     },
