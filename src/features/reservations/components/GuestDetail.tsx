@@ -2,21 +2,15 @@ import {
   Block,
   BlockFooter,
   BlockTitle,
-  Link,
   List,
   ListButton,
   ListItem,
-  Navbar,
-  NavLeft,
-  NavRight,
   Page,
   Popup,
   Toggle,
 } from 'framework7-react'
-import { Check, X } from 'lucide-react'
 import { useState } from 'react'
 import { Avatar } from '@/features/profile/index.ts'
-import '@/features/reservations/components/flow-primary.css'
 import '@/features/reservations/components/GuestDetail.css'
 import type { Guest } from '@/features/reservations/api/types.ts'
 import {
@@ -28,6 +22,7 @@ import {
 import { guestName } from '@/features/reservations/lib/guests.ts'
 import { formatDate, formatDateRange } from '@/shared/lib/dates.ts'
 import { openDayPicker } from '@/shared/ui/day-picker.ts'
+import ModalNavbar from '@/shared/ui/ModalNavbar.tsx'
 import '@/shared/ui/chips.css'
 
 interface GuestDetailProps {
@@ -138,27 +133,17 @@ function GuestForm({
 
   return (
     <>
-      <Navbar>
-        <NavLeft>
-          <Link iconOnly popupClose aria-label="Lukk">
-            <X size={22} aria-hidden="true" />
-          </Link>
-        </NavLeft>
-        <NavRight>
-          <Link
-            iconOnly
-            popupClose={changed}
-            aria-label="Ferdig"
-            aria-disabled={!changed}
-            className={changed ? 'flow-primary' : 'flow-primary disabled'}
-            onClick={() => {
-              if (changed) onSave(saved)
-            }}
-          >
-            <Check size={24} aria-hidden="true" />
-          </Link>
-        </NavRight>
-      </Navbar>
+      <ModalNavbar
+        closeLabel="Lukk"
+        confirm={{
+          label: 'Ferdig',
+          disabled: !changed,
+          closesPopup: true,
+          onClick: () => {
+            onSave(saved)
+          },
+        }}
+      />
       <Block className="text-align-center">
         <Avatar avatarUrl={guest.avatarUrl} size={72} />
         <h2 className="guest-detail-name">{guestName(guest)}</h2>

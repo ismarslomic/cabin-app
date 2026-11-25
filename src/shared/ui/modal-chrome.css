@@ -1,0 +1,57 @@
+/* The close X and the check of a modal, for `ModalNavbar` (a Framework7 navbar) and `ModalHeader`
+   (a sheet's header). */
+
+/* Navbar: Framework7's iOS navbar draws the glass pill around the whole `.right` group, not around
+   the link, so the pill itself is tinted with the accent color (like a prominent glass button) and
+   the link stays plain. Disabled: the same pill, dimmed. */
+.ios .navbar .right:has(.modal-confirm) {
+  background-color: var(--f7-theme-color);
+}
+
+.ios .navbar .right:has(.modal-confirm.disabled) {
+  background-color: color-mix(in srgb, var(--f7-theme-color) 40%, transparent);
+}
+
+.ios .navbar a.link.modal-confirm {
+  color: var(--f7-button-fill-text-color);
+  font-weight: 600;
+}
+
+/* Sheet header: the buttons are 44px glass circles like the navbar's, the check is tinted. A
+   disabled check is dimmed by Framework7's `.disabled`, so no extra dimming here. */
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 16px 4px;
+}
+
+.modal-header-title {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.modal-header-title span {
+  color: var(--cabin-muted);
+  font-size: 13px;
+}
+
+.modal-header-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background-color: var(--f7-glass-bg-color);
+  box-shadow: var(--f7-glass-shadow);
+  /* The same neutral color as the X of a navbar, not the accent color of a link. */
+  color: var(--f7-text-color);
+}
+
+.modal-header-confirm {
+  background-color: var(--f7-theme-color);
+  color: var(--f7-button-fill-text-color);
+}

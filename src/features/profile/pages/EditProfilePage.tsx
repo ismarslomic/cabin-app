@@ -1,7 +1,6 @@
 import type { Router } from 'framework7/types'
-import { Check } from 'lucide-react'
-import { Block, Link, List, ListInput, Navbar, NavRight, Page, Preloader } from 'framework7-react'
-import { useState } from 'react'
+import { Block, List, ListInput, Page, Preloader } from 'framework7-react'
+import { useEffect, useRef, useState } from 'react'
 import { fetchProfile, updateProfile } from '@/features/profile/api/profile-api.ts'
 import { setProfile, useProfile } from '@/features/profile/api/profile-store.ts'
 import type { Gender, Profile } from '@/features/profile/api/types.ts'
@@ -14,6 +13,7 @@ import {
 } from '@/features/profile/api/error-texts.ts'
 import { classifyFailure } from '@/shared/lib/api-error.ts'
 import { handleCommonFailure } from '@/shared/ui/failure-feedback.ts'
+import ModalNavbar from '@/shared/ui/ModalNavbar.tsx'
 
 function EditScreen({ profile, f7router }: { profile: Profile; f7router: Router.Router }) {
   const [firstName, setFirstName] = useState(profile.firstName)
@@ -32,6 +32,14 @@ function EditScreen({ profile, f7router }: { profile: Profile; f7router: Router.
     year !== profile.birthYear ||
     gender !== profile.gender
   const canSave = valid && changed && !saving
+  // The page may be left (swipe back) while the save runs: then it must not go back a second time.
+  const alive = useRef(false)
+  useEffect(() => {
+    alive.current = true
+    return () => {
+      alive.current = false
+    }
+  }, [])
 
   // The profile changed elsewhere: fetch the latest and reset the form to it.
   const resetToLatest = async () => {
@@ -61,7 +69,7 @@ function EditScreen({ profile, f7router }: { profile: Profile; f7router: Router.
         profile.version,
       )
       setProfile(saved)
-      f7router.back()
+      if (alive.current) f7router.back()
     } catch (e) {
       const failure = classifyFailure(e)
       if (failure.kind === 'api' && isVersionConflict(failure)) {
@@ -75,19 +83,20 @@ function EditScreen({ profile, f7router }: { profile: Profile; f7router: Router.
 
   return (
     <Page name="edit-profile">
-      <Navbar title="Rediger profil" backLink="Tilbake">
-        <NavRight>
-          <Link
-            aria-label="Lagre"
-            className={canSave ? undefined : 'disabled'}
-            onClick={() => {
-              void save()
-            }}
-          >
-            <Check size={24} />
-          </Link>
-        </NavRight>
-      </Navbar>
+      {/* Framework7's back link (this page is pushed) and the same tinted check as the reservation flow. */}
+      <ModalNavbar
+        title="Rediger profil"
+        leading="back"
+        closeLabel="Tilbake"
+        confirm={{
+          label: 'Lagre',
+          disabled: !(valid && changed),
+          busy: saving,
+          onClick: () => {
+            void save()
+          },
+        }}
+      />
       <List strongIos dividersIos insetIos>
         <ListInput
           inputId="profile-first-name"
@@ -156,7 +165,12 @@ export default function EditProfilePage({ f7router }: { f7router: Router.Router 
 
   return (
     <Page name="edit-profile">
-      <Navbar title="Rediger profil" backLink="Tilbake" />
+      <ModalNavbar
+        title="Rediger profil"
+        leading="back"
+        closeLabel="Tilbake"
+        confirm={{ label: 'Lagre', disabled: true }}
+      />
       <Block className="text-align-center">
         <Preloader />
       </Block>

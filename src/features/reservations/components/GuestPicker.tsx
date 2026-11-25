@@ -1,16 +1,7 @@
-import {
-  Block,
-  BlockTitle,
-  List,
-  ListItem,
-  PageContent,
-  Link,
-  Searchbar,
-  Sheet,
-} from 'framework7-react'
-import { Check, X } from 'lucide-react'
+import { Block, BlockTitle, List, ListItem, PageContent, Searchbar, Sheet } from 'framework7-react'
 import { type ChangeEvent, useState } from 'react'
 import '@/features/reservations/components/GuestPicker.css'
+import ModalHeader from '@/shared/ui/ModalHeader.tsx'
 import { Avatar } from '@/features/profile/index.ts'
 import type { Guest } from '@/features/reservations/api/types.ts'
 import { filterGuests, groupGuests, guestName } from '@/features/reservations/lib/guests.ts'
@@ -106,29 +97,19 @@ export default function GuestPicker({ opened, available, room, onAdd, onClose }:
         <PageContent>
           {/* The header and the search stay in place while the list scrolls under them. */}
           <div className="guest-picker-top">
-            <div className="guest-picker-header">
-              <Link iconOnly aria-label="Lukk" className="guest-picker-button" onClick={onClose}>
-                <X size={22} aria-hidden="true" />
-              </Link>
-              <div className="guest-picker-title">
-                <strong>Velg gjester</strong>
-                <span>{selected.length === 0 ? 'Ingen valgt' : `${selected.length} valgt`}</span>
-              </div>
-              <Link
-                iconOnly
-                aria-label="Legg til valgte"
-                className={
-                  selected.length === 0
-                    ? 'guest-picker-button guest-picker-confirm disabled'
-                    : 'guest-picker-button guest-picker-confirm'
-                }
-                onClick={() => {
-                  if (selected.length > 0) onAdd(selected)
-                }}
-              >
-                <Check size={24} aria-hidden="true" />
-              </Link>
-            </div>
+            <ModalHeader
+              title="Velg gjester"
+              subtitle={selected.length === 0 ? 'Ingen valgt' : `${selected.length} valgt`}
+              closeLabel="Lukk"
+              onClose={onClose}
+              confirm={{
+                label: 'Legg til valgte',
+                disabled: selected.length === 0,
+                onClick: () => {
+                  onAdd(selected)
+                },
+              }}
+            />
             <Searchbar
               customSearch
               placeholder="Søk etter gjest"

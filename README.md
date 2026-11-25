@@ -353,7 +353,7 @@ What is in `shared/lib/` (check here first, extend rather than duplicate):
 | `api-error.ts`   | `ApiRequestError`, `ensureOk`, `classifyFailure`, `readApiErrorCode`: how a failed API call is read (never `ApiError.message`)                |
 | `app-refresh.ts` | Registers and runs what a pull-to-refresh does                                                                                                |
 
-`shared/ui/` holds feature-agnostic components (`AppPage`, `ErrorState`, `Placeholder`, `ViewSwitcher`, `chips.css` (the `.chips` and `.chip` pills for values on a list row), `failure-feedback.ts` with `handleCommonFailure`, and `day-picker.ts` with `openDayPicker`, a one-day calendar sheet). Keep this table in step with the folder when you add a file.
+`shared/ui/` holds feature-agnostic components (`AppPage`, `ErrorState`, `Placeholder`, `ViewSwitcher`, `chips.css` (the `.chips` and `.chip` pills for values on a list row), `ModalNavbar` (the close X or, for a pushed page, Framework7's own back link (`leading="back"`), the title and the tinted check; the reservation flow and the profile edit page use it) and `ModalHeader` (the same for a sheet, which has no navbar); use them, do not build a new one, `failure-feedback.ts` with `handleCommonFailure`, and `day-picker.ts` with `openDayPicker`, a one-day calendar sheet). Keep this table in step with the folder when you add a file.
 
 The `@/` alias maps to `src/` (`vite.config.ts` and `tsconfig.app.json`), e.g. `import App from '@/app/App.tsx'`.
 
@@ -376,7 +376,7 @@ The `@/` alias maps to `src/` (`vite.config.ts` and `tsconfig.app.json`), e.g. `
 - **Framework7 `Sheet` and `swipeToClose`:** do not use `swipeToClose` on a React `Sheet`. In development React's StrictMode mounts the sheet twice and Framework7 leaves a touch handler on the destroyed first one, so the first touch (for example in a search field inside the sheet) throws `Cannot read properties of undefined (reading 'swipeToClose')`. Close a sheet with a button (see `GuestPicker.test.tsx`).
 - **Avatars:** `Avatar` takes the `avatarUrl` from the API response (`GuestResponse`, `MeResponse`, `LiveGuestStats`), never a guest id. A `null` `avatarUrl` means no avatar and no request; the URL has a `v` parameter that changes with the image, so a new image is fetched again.
 - **Framework7 iOS theme (Liquid Glass) details:**
-  - The navbar's glass pill is drawn around the whole `.left` and `.right` group, not around a link, so to tint a navbar button tint the group (`.right:has(.flow-primary)`, see `flow-primary.css`). A group with no content is still drawn: an empty `NavLeft` is an empty circle.
+  - The navbar's glass pill is drawn around the whole `.left` and `.right` group, not around a link, so to tint a navbar button tint the group (`.right:has(.modal-confirm)`, see `shared/ui/modal-chrome.css`). A group with no content is still drawn: an empty `NavLeft` is an empty circle.
   - `.disabled` sets `opacity: .55 !important` and `pointer-events: none`. Do not add your own dimming on top of it for the same element.
   - A swipe button gets `10px 16px` padding made for text; an icon-only one needs equal `--f7-swipeout-button-padding-*` (see `GuestsStep.css`) to be a circle.
   - The iOS `Sheet` background is translucent (`--f7-glass-bg-color`): the page behind shines through. Set `--f7-sheet-bg-color` if it must not (`GuestPicker.css`).

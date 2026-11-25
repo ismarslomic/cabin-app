@@ -1,7 +1,5 @@
-/* The guest sheet. The header has the close on the left, the title with how many are picked in the
-   middle and the confirm on the right (the buttons use the navbar's glass, the confirm is tinted
-   like the flow's primary action; a disabled confirm is dimmed by Framework7's `.disabled`, so no
-   extra dimming here). The header and the search stay pinned while the list scrolls.
+/* The guest sheet. Its header is the shared `ModalHeader`. The header and the search stay pinned
+   while the list scrolls.
 
    The sheet is tall enough to cover the screen behind it (the flow's own "X" and check), except the
    strip of the status bar; a tap on that strip closes the sheet. Its own background is opaque:
@@ -21,41 +19,4 @@
   padding-bottom: 8px;
   background: color-mix(in srgb, var(--f7-page-bg-color) 55%, transparent);
   backdrop-filter: saturate(180%) blur(16px);
-}
-
-.guest-picker-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 16px 4px;
-}
-
-.guest-picker-title {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-}
-
-.guest-picker-title span {
-  color: var(--cabin-muted);
-  font-size: 13px;
-}
-
-.guest-picker-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  background-color: var(--f7-glass-bg-color);
-  box-shadow: var(--f7-glass-shadow);
-  /* The same neutral color as the "X" of the flow, not the accent color of a link. */
-  color: var(--f7-text-color);
-}
-
-.guest-picker-confirm {
-  background-color: var(--f7-theme-color);
-  color: var(--f7-button-fill-text-color);
 }

@@ -1,18 +1,4 @@
-import {
-  Actions,
-  ActionsButton,
-  ActionsGroup,
-  ActionsLabel,
-  Link,
-  Navbar,
-  NavLeft,
-  NavRight,
-  NavTitle,
-  Page,
-  Popup,
-  Preloader,
-} from 'framework7-react'
-import { Check, X } from 'lucide-react'
+import { Actions, ActionsButton, ActionsGroup, ActionsLabel, Page, Popup } from 'framework7-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { reloadProfile, useProfile } from '@/features/profile/index.ts'
 import {
@@ -26,7 +12,6 @@ import FlowSkeleton from '@/features/reservations/components/FlowSkeleton.tsx'
 import GuestDetail from '@/features/reservations/components/GuestDetail.tsx'
 import GuestPicker from '@/features/reservations/components/GuestPicker.tsx'
 import GuestsStep from '@/features/reservations/components/GuestsStep.tsx'
-import '@/features/reservations/components/flow-primary.css'
 import '@/features/reservations/components/NewReservationPopup.css'
 import PeriodStep from '@/features/reservations/components/PeriodStep.tsx'
 import {
@@ -45,59 +30,7 @@ import { periodIssueText } from '@/features/reservations/lib/period-issue.ts'
 import { todayInOslo } from '@/shared/lib/dates.ts'
 import { handleCommonFailure } from '@/shared/ui/failure-feedback.ts'
 import ErrorState from '@/shared/ui/ErrorState.tsx'
-
-const noop = () => undefined
-
-interface PrimaryAction {
-  label: string
-  disabled: boolean
-  /** Shows a preloader instead of the label. */
-  busy?: boolean
-  onClick: () => void
-}
-
-interface FlowNavbarProps {
-  /** The reservation is being sent: cancelling waits until it is done. */
-  busy?: boolean
-  /** What the user does ("Opprett"), a check icon at the top right like the iOS Calendar and the profile page. `label` is its accessible name. */
-  primary?: PrimaryAction
-  onCancel: () => void
-}
-
-// Like the iOS Calendar's "new event": close on the left, the primary action on the right.
-function FlowNavbar({ busy = false, primary, onCancel }: FlowNavbarProps) {
-  const waiting = busy ? 'disabled' : undefined
-  const primaryDisabled = primary?.disabled || primary?.busy
-  return (
-    <Navbar>
-      <NavLeft>
-        <Link
-          iconOnly
-          aria-label="Avbryt"
-          className={waiting}
-          onClick={busy ? undefined : onCancel}
-        >
-          <X size={22} aria-hidden="true" />
-        </Link>
-      </NavLeft>
-      <NavTitle>Ny reservasjon</NavTitle>
-      <NavRight>
-        {primary && (
-          <Link
-            iconOnly
-            aria-label={primary.label}
-            aria-busy={primary.busy}
-            aria-disabled={primaryDisabled}
-            className={primaryDisabled ? 'flow-primary disabled' : 'flow-primary'}
-            onClick={primaryDisabled ? undefined : primary.onClick}
-          >
-            {primary.busy ? <Preloader size={18} /> : <Check size={24} aria-hidden="true" />}
-          </Link>
-        )}
-      </NavRight>
-    </Navbar>
-  )
-}
+import ModalNavbar from '@/shared/ui/ModalNavbar.tsx'
 
 interface DraftFlowProps {
   today: string
@@ -223,21 +156,25 @@ function DraftFlow({
   }
 
   const periodIssue = periodIssueText(period, today, reservations, serverProblem)
-  const primary: PrimaryAction = {
-    label: 'Opprett',
-    disabled: periodIssue !== undefined,
-    busy: submitting,
-    onClick: () => {
-      void submit()
-    },
-  }
-
   const openGuest =
     openGuestId === null ? undefined : draftGuests.find((guest) => guest.guestId === openGuestId)
 
   return (
     <Page>
-      <FlowNavbar busy={submitting} primary={primary} onCancel={cancel} />
+      <ModalNavbar
+        title="Ny reservasjon"
+        closeLabel="Avbryt"
+        onClose={cancel}
+        closeDisabled={submitting}
+        confirm={{
+          label: 'Opprett',
+          disabled: periodIssue !== undefined,
+          busy: submitting,
+          onClick: () => {
+            void submit()
+          },
+        }}
+      />
       <PeriodStep
         period={period}
         today={today}
@@ -342,9 +279,11 @@ function ReservationFlow({ onCreated, onClose }: FlowProps) {
   return (
     <Page>
       {/* The check is there, dimmed, so the navbar does not change when the data arrives. */}
-      <FlowNavbar
-        onCancel={onClose}
-        primary={{ label: 'Opprett', disabled: true, onClick: noop }}
+      <ModalNavbar
+        title="Ny reservasjon"
+        closeLabel="Avbryt"
+        onClose={onClose}
+        confirm={{ label: 'Opprett', disabled: true }}
       />
       {failed ? (
         <ErrorState
