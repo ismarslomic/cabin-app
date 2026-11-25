@@ -1,10 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import {
-  fetchAvatarUrl,
-  fetchProfile,
-  ProfileApiError,
-  updateProfile,
-} from '@/features/profile/api/profile-api.ts'
+import { fetchAvatarUrl, fetchProfile, updateProfile } from '@/features/profile/api/profile-api.ts'
+import { ApiRequestError } from '@/shared/lib/api-error.ts'
 import { SessionExpiredError } from '@/shared/lib/http.ts'
 
 const fetchMock = vi.fn()
@@ -47,17 +43,11 @@ describe('profile api', () => {
     expect(JSON.parse(init.body as string)).toEqual({ ...update, version: 3 })
   })
 
-  const conflict =
-    'Profilen ble endret et annet sted. Vi har hentet nyeste versjon, sjekk og lagre på nytt.'
   it.each([
-    [400, undefined, 'Ugyldig verdi. Sjekk feltene og prøv igjen.'],
-    [400, 'INVALID_REQUEST', 'Ugyldig verdi. Sjekk feltene og prøv igjen.'],
-    [403, undefined, 'Du har ikke tilgang til appen.'],
-    [412, 'VERSION_MISMATCH', conflict],
-    [412, undefined, conflict],
-    [413, 'BODY_TOO_LARGE', 'Kunne ikke lagre profilen.'],
-    [500, undefined, 'Kunne ikke lagre profilen.'],
-  ])('explains a %s (%s) on update in Norwegian', async (status, code, message) => {
+    [400, undefined],
+    [412, 'VERSION_MISMATCH'],
+    [500, undefined],
+  ])('throws the status and code of a failed update (%s, %s)', async (status, code) => {
     fetchMock.mockResolvedValue(
       code
         ? Response.json({ code, message: 'English' }, { status })
@@ -67,15 +57,15 @@ describe('profile api', () => {
 
     await expect(
       updateProfile({ firstName: 'a', lastName: 'b', birthYear: 1990, gender: 'MALE' }, 1),
-    ).rejects.toEqual(new ProfileApiError(message, status))
+    ).rejects.toEqual(new ApiRequestError(status, code))
   })
 
-  it('returns null for a guest without avatar', async () => {
+  it('returns null when the avatar image is not found', async () => {
     fetchMock.mockResolvedValue(new Response(null, { status: 404 }))
     vi.stubGlobal('fetch', fetchMock)
 
-    await expect(fetchAvatarUrl('g1')).resolves.toBeNull()
-    expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/guests/g1/avatar')
+    await expect(fetchAvatarUrl('/api/guests/g1/avatar?v=3')).resolves.toBeNull()
+    expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/guests/g1/avatar?v=3')
   })
 
   it('turns the avatar image into a blob URL', async () => {
@@ -83,6 +73,6 @@ describe('profile api', () => {
     vi.stubGlobal('fetch', fetchMock)
     vi.stubGlobal('URL', Object.assign(URL, { createObjectURL: () => 'blob:avatar' }))
 
-    await expect(fetchAvatarUrl('g1')).resolves.toBe('blob:avatar')
+    await expect(fetchAvatarUrl('/api/guests/g1/avatar?v=3')).resolves.toBe('blob:avatar')
   })
 })

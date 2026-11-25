@@ -9,7 +9,9 @@ import type {
   LiveStats,
   ReservationGuest,
 } from '@/features/home/api/stats-api.ts'
+import { resetProfileStore } from '@/features/profile/api/profile-store.ts'
 import { reloadForLogin } from '@/shared/lib/http.ts'
+import { resetFailureFeedback } from '@/shared/ui/failure-feedback.ts'
 
 vi.mock('@/shared/lib/http.ts', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/shared/lib/http.ts')>()),
@@ -54,13 +56,18 @@ const next = {
   guests: ['a', 'b', 'c', 'd', 'e'].map((id) => guest(id, id.toUpperCase())),
 }
 
-function stubApi(live: Partial<LiveStats>, yearStats: CurrentYearStats = year) {
+function stubApi(
+  live: Partial<LiveStats>,
+  yearStats: CurrentYearStats = year,
+  role: 'ADMIN' | 'FAMILY_USER' | 'GUEST_USER' = 'FAMILY_USER',
+) {
   vi.stubGlobal(
     'fetch',
     vi.fn((input: RequestInfo | URL) => {
       const url = typeof input === 'string' ? input : ''
       if (url === '/api/stats') return Promise.resolve(Response.json({ ...empty, ...live }))
       if (url === '/api/stats/current-year') return Promise.resolve(Response.json(yearStats))
+      if (url === '/api/me') return Promise.resolve(Response.json({ id: 'g1', role }))
       return Promise.reject(new TypeError('Failed to fetch'))
     }),
   )
@@ -131,7 +138,7 @@ describe('HomePage', () => {
     expect(await screen.findByText('Ingen planlagte besøk')).toBeInTheDocument()
     expect(screen.queryByText('Gjeldende besøk')).not.toBeInTheDocument()
     expect(screen.queryByText('Neste besøk')).not.toBeInTheDocument()
-    const button = screen.getByRole('link', { name: /Reserver ny/ })
+    const button = await screen.findByRole('link', { name: /Reserver ny/ })
     expect(button).toHaveClass('button-fill')
     // The button sits inside the empty-state card.
     expect(button.closest('.empty-reservations')).not.toBeNull()
@@ -139,22 +146,38 @@ describe('HomePage', () => {
 
   afterEach(() => {
     vi.useRealTimers()
+    vi.unstubAllEnvs()
+    resetProfileStore()
+    resetFailureFeedback()
+  })
+
+  it('uses today in Oslo, not the phone date, to dim guests who have left', async () => {
+    // A phone in New York: it is still 3 November there (18:30), but 00:30 on 4 November in Oslo,
+    // so the guests' stays (to 3 November) are over.
+    vi.stubEnv('TZ', 'America/New_York')
+    vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-11-03T23:30:00Z') })
+    stubApi({ isOccupied: true, currentReservation: current })
+    const { container } = renderApp()
+    await loaded()
+
+    await screen.findByText('Gjeldende besøk')
+    expect(container.querySelectorAll('.avatar-stack-absent')).toHaveLength(2)
   })
 
   it('shows the current reservation with a tonal reserve button', async () => {
     // Only Date is faked: the guests' stays (2026-11-01 to 2026-11-03) include this day.
-    vi.useFakeTimers({ toFake: ['Date'], now: new Date(2026, 10, 2) })
+    vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-11-02T12:00:00Z') })
     stubApi({ isOccupied: true, currentReservation: current })
     renderApp()
     await loaded()
 
     expect(await screen.findByText('Gjeldende besøk')).toBeInTheDocument()
-    expect(screen.getByText('søn 1. nov – tir 3. nov')).toBeInTheDocument()
+    expect(screen.getByText('søn 1. nov. – tir 3. nov.')).toBeInTheDocument()
     expect(screen.getByText('På hytta nå · 1 natt igjen')).toBeInTheDocument()
     expect(screen.getByText('#7')).toBeInTheDocument()
     expect(screen.getByRole('img', { name: 'Gjester: Kari, Ola' })).toBeInTheDocument()
     expect(screen.queryByText('Neste besøk')).not.toBeInTheDocument()
-    const button = screen.getByRole('link', { name: /Reserver ny/ })
+    const button = await screen.findByRole('link', { name: /Reserver ny/ })
     expect(button).toHaveClass('button-tonal')
     expect(button.closest('.empty-reservations')).toBeNull()
   })
@@ -169,7 +192,67 @@ describe('HomePage', () => {
     expect(screen.getByText('#8')).toBeInTheDocument()
     expect(screen.queryByText('Gjeldende besøk')).not.toBeInTheDocument()
     expect(screen.queryByText('Ingen planlagte besøk')).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /Reserver ny/ })).toHaveClass('button-fill')
+    expect(await screen.findByRole('link', { name: /Reserver ny/ })).toHaveClass('button-fill')
+  })
+
+  it('hides the reserve button from a guest user', async () => {
+    stubApi({ nextReservation: next }, year, 'GUEST_USER')
+    renderApp()
+
+    await screen.findByText('Neste besøk')
+    // Wait until the profile has been read, or the button is hidden only because it is loading.
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith('/api/me', expect.anything())
+    })
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20))
+    })
+    expect(screen.queryByRole('link', { name: /Reserver ny/ })).not.toBeInTheDocument()
+  })
+
+  it('shows one no-access alert and an error with a retry when the user has no access', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(Response.json({ code: 'FORBIDDEN', message: 'x' }, { status: 403 })),
+      ),
+    )
+    renderApp()
+
+    expect(await screen.findByText('Kunne ikke hente besøkene.')).toBeInTheDocument()
+    await screen.findAllByText('Du har ikke tilgang til appen.')
+    // The stats and the profile both failed: let every request settle before counting alerts.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20))
+    })
+    expect(screen.getAllByText('Du har ikke tilgang til appen.')).toHaveLength(1)
+    expect(screen.getByRole('link', { name: 'Prøv igjen' })).toBeInTheDocument()
+  })
+
+  it('hides the reserve button until the profile is known', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) => {
+        const url = typeof input === 'string' ? input : ''
+        if (url === '/api/me') return new Promise<Response>(() => undefined)
+        if (url === '/api/stats') return Promise.resolve(Response.json(empty))
+        return Promise.resolve(Response.json(year))
+      }),
+    )
+    renderApp()
+
+    expect(await screen.findByText('Ingen planlagte besøk')).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /Reserver ny/ })).not.toBeInTheDocument()
+  })
+
+  it('opens the flow for a new reservation from the reserve button', async () => {
+    stubApi({})
+    const user = userEvent.setup()
+    renderApp()
+
+    await user.click(await screen.findByRole('link', { name: /Reserver ny/ }))
+
+    expect(await screen.findByText('Ny reservasjon')).toBeInTheDocument()
   })
 
   it('shows both reservations, "+N" for extra guests and an outlined reserve button', async () => {
@@ -180,7 +263,7 @@ describe('HomePage', () => {
     expect(await screen.findByText('Gjeldende besøk')).toBeInTheDocument()
     expect(screen.getByText('Neste besøk')).toBeInTheDocument()
     expect(screen.getByText('+1')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /Reserver ny/ })).toHaveClass('button-outline')
+    expect(await screen.findByRole('link', { name: /Reserver ny/ })).toHaveClass('button-outline')
   })
 
   it('shows the year statistics', async () => {

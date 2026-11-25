@@ -1,0 +1,50 @@
+/* The time pill: the shared pill (shared/ui/chips.css) holding a native input. */
+.period-chip-time {
+  min-width: 72px;
+}
+
+/* The input inside the time pill is plain: no background, no clock icon, the time centered. */
+.period-chip-time input {
+  width: 4.5em;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: center;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.period-chip-time input::-webkit-calendar-picker-indicator {
+  display: none;
+}
+
+.period-chip-time input::-webkit-date-and-time-value {
+  text-align: center;
+}
+
+/* The quick picks as two capsules. Framework7 slides a separate highlight element behind the labels;
+   here the selected button is drawn itself (no highlight, no layering between label and highlight),
+   so the label color cannot be hidden by it. The radius variable gives the buttons their capsule.
+   (The sliding animation only works inside a Subnavbar, as on the Calendar page.) */
+.period-quick-picks {
+  --f7-button-border-radius: 999px;
+}
+
+.period-quick-picks .segmented-highlight {
+  display: none;
+}
+
+.period-quick-picks .button {
+  --f7-button-text-color: var(--cabin-muted);
+  color: var(--cabin-muted);
+}
+
+.period-quick-picks .button.button-active {
+  --f7-button-text-color: var(--f7-button-fill-text-color);
+  background-color: var(--f7-theme-color);
+  color: var(--f7-button-fill-text-color);
+}

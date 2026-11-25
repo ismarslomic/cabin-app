@@ -5,6 +5,9 @@
  * Overrides Framework7's iOS defaults.
  */
 :root {
+  /* Native form controls (the clock of a time field, scrollbars) follow the theme. */
+  color-scheme: light;
+
   --f7-theme-color: #0a66c9;
   --f7-theme-color-rgb: 10, 102, 201;
   --f7-theme-color-shade: #0857ab;
@@ -18,8 +21,15 @@
   --f7-text-color: #0e1621;
   --f7-block-title-text-color: #566678;
   --f7-block-header-text-color: #566678;
+  /* Quick-pick style segmented controls: the surface of the cards, the accent for the selection. */
+  --f7-segmented-strong-bg-color: var(--cabin-chip);
+  --f7-segmented-strong-button-text-color: var(--cabin-muted);
+  --f7-segmented-strong-button-active-bg-color: var(--f7-theme-color);
+  --f7-segmented-strong-button-active-text-color: var(--f7-button-fill-text-color);
 
   --cabin-elevated: #f3f6fa;
+  /* Chips and segmented controls on a card or the page: visible against white and #eef2f7. */
+  --cabin-chip: #e2e8f0;
   --cabin-success: #17794a;
   --cabin-warning: #a35400;
   --cabin-muted: #566678;
@@ -31,6 +41,8 @@
 }
 
 .ios.dark {
+  color-scheme: dark;
+
   --f7-theme-color: #5ea9ff;
   --f7-theme-color-rgb: 94, 169, 255;
   --f7-theme-color-shade: #5090d9;
@@ -46,8 +58,13 @@
   --f7-text-color: #f5f7fb;
   --f7-block-title-text-color: #98a8ba;
   --f7-block-header-text-color: #98a8ba;
+  --f7-segmented-strong-bg-color: var(--cabin-chip);
+  --f7-segmented-strong-button-text-color: var(--cabin-muted);
+  --f7-segmented-strong-button-active-bg-color: var(--f7-theme-color);
+  --f7-segmented-strong-button-active-text-color: var(--f7-button-fill-text-color);
 
   --cabin-elevated: #1d2b39;
+  --cabin-chip: #1d2b39;
   --cabin-success: #5ed998;
   --cabin-warning: #ffb340;
   --cabin-muted: #98a8ba;

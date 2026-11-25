@@ -1,0 +1,51 @@
+/* The add row: its icon sits in the same 40px column as the avatars above it, so the texts line up,
+   and the row is in the accent color, so it reads as an action and not as another guest. */
+.guests-add-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+}
+
+.guests-add .item-title,
+.guests-add .guests-add-icon {
+  color: var(--f7-theme-color);
+}
+
+/* The swipe button with only an icon: Framework7's iOS theme pads a swipe button 10px by 16px (made
+   for a text), which makes an icon button an ellipse. Equal padding around the 20px icon gives a
+   44px circle. */
+.guests-remove {
+  --f7-swipeout-button-padding-vertical: 12px;
+  --f7-swipeout-button-padding-horizontal: 12px;
+}
+
+/* The note under the guest list about own dates that were removed: a warning icon and a muted
+   footnote, like the other explanations in the flow. */
+.guests-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.guests-note svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--cabin-warning);
+}
+
+/* The text takes the width; the close button sits at the end and keeps the muted color. */
+.guests-note span {
+  flex: 1;
+}
+
+.guests-note .link {
+  flex: none;
+  color: var(--cabin-muted);
+}
+
+.guests-note .link svg {
+  margin-top: 0;
+  color: inherit;
+}

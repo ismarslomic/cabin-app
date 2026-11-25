@@ -21,6 +21,8 @@
     "generate-api": "pnpm dlx openapi-typescript@7.13.0 openapi/cabin-visits.json -o src/shared/api/schema.ts"
   },
   "dependencies": {
+    "@date-fns/tz": "^1.5.0",
+    "date-fns": "^4.4.0",
     "framework7": "^9.3.0",
     "framework7-react": "^9.3.0",
     "lucide-react": "^1.77.0",

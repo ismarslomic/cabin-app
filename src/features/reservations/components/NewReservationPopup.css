@@ -1,0 +1,36 @@
+/* A message under a group of rows: an icon and the text, in line. */
+.flow-message {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.flow-message svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+/* The "Forkast reservasjonen?" action sheet: a readable question (the normal text color, not the
+   muted grey of a label) with its consequence on a second line, and a little more room at the
+   screen edges. */
+.flow-actions {
+  --f7-actions-label-text-color: var(--f7-text-color);
+  --f7-actions-label-font-size: 15px;
+  --f7-actions-label-padding: 14px 16px;
+  --f7-actions-group-margin: 12px;
+}
+
+.flow-actions .actions-label {
+  flex-direction: column;
+  gap: 2px;
+}
+
+.flow-actions .actions-label span {
+  color: var(--cabin-muted);
+  font-size: 13px;
+}
+
+/* The safe choice is the default one: bold, as in iOS action sheets. */
+.flow-actions .flow-actions-safe {
+  font-weight: 600;
+}

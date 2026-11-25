@@ -1,0 +1,22 @@
+/* The guest sheet. Its header is the shared `ModalHeader`. The header and the search stay pinned
+   while the list scrolls.
+
+   The sheet is tall enough to cover the screen behind it (the flow's own "X" and check), except the
+   strip of the status bar; a tap on that strip closes the sheet. Its own background is opaque:
+   Framework7's iOS sheet is translucent, and then the flow behind it (for example the blue
+   quick-pick highlight) shines through. */
+.guest-picker {
+  --f7-sheet-height: calc(100% - var(--f7-safe-area-top, 0px));
+  --f7-sheet-bg-color: var(--f7-page-bg-color);
+}
+
+/* The pinned block is glass: translucent and blurred, so the list scrolls under it and there is no
+   hard edge against the sheet. */
+.guest-picker-top {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  padding-bottom: 8px;
+  background: color-mix(in srgb, var(--f7-page-bg-color) 55%, transparent);
+  backdrop-filter: saturate(180%) blur(16px);
+}

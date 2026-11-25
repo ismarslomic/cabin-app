@@ -1,0 +1,6 @@
+/* The guest's name under the avatar, like a contact card. */
+.guest-detail-name {
+  margin: 8px 0 0;
+  font-size: 22px;
+  font-weight: 600;
+}

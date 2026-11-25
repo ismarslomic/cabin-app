@@ -18,7 +18,9 @@ This file overrides the global Kotlin/Gradle instructions: this is a **pnpm** pr
 Group by feature, not by technical layer. Full rules in `README.md` ("Folder structure").
 
 - `src/app/`: wiring only. `src/features/<name>/`: pages, components, hooks, api, tests.
-- `src/shared/`: only when 2+ features need it. `src/styles/`: global styling only.
+- `src/shared/`: everything feature-agnostic. `src/styles/`: global styling only.
+- **Generic helpers go in `src/shared/lib/` as soon as you write them**, even if only one feature uses them today. Test: could another feature use it unchanged, without any reservation, profile or Home concept? If yes, it is generic. Domain logic stays in its feature (for example the 02:00 reservation rule, status texts, `parseBirthYear`).
+- **Before writing a helper, look in `src/shared/lib/`** (`ls`, grep; the README "Folder structure" chapter lists what is there) and reuse or extend the file for that topic (dates, times, numbers, distance, http, API errors) instead of adding a near-duplicate or a generic function inside a feature folder. A new shared helper gets a test next to it and a JSDoc `@example`.
 - Features never import another feature's internals, and never import from `app/`.
 - Use the `@/` alias for `src/`, not `../../..`.
 - **Coverage rules** (`codecov.yml`): a PR may lower total coverage by at most 2 points, and the lines it changes must be covered at least 80%. Write tests with the code, run `pnpm test:coverage` before committing and check the changed files in the report; if a changed file is under 80%, add tests before asking to commit.
@@ -29,6 +31,7 @@ Group by feature, not by technical layer. Full rules in `README.md` ("Folder str
 - UI is Framework7 React (`framework7-react`) on top of `framework7/lite-bundle`. Use its components (`Page`, `Navbar`, `Block`, `List`, ...), not custom HTML/CSS, and check https://framework7.io/react/ for the API.
 - A page component has `<Page>` at the root and lives in `features/<name>/pages/`. Each feature exports its routes in `features/<name>/index.ts`; `app/routes.ts` collects them.
 - App parameters live in `app/f7-params.ts`. Framework7 has no locale files: set built-in Norwegian texts through component parameters.
+- **Accessible names are for the tests, not a requirement of the audience** (about 20 known users, none with accessibility needs). A control should be findable by role and name so tests stay simple (`getByRole('checkbox', { name: ... })`), no more. Try a Framework7 component first: add `aria-label`, or a real `<label htmlFor>` for inputs, and check in a test that the query works. Write a custom component to get a name only when that provably does not work _and_ a name-less control would make tests clearly harder; say why in a comment. Never write a custom replacement for a Framework7 component on an assumption.
 - Tests that render Framework7 need `matchMedia` (stubbed in `src/test/setup.ts`), `StrictMode`, and async `findBy*` queries.
 
 ## PWA
@@ -68,6 +71,10 @@ Group by feature, not by technical layer. Full rules in `README.md` ("Folder str
 - Call the API only with relative `/api/...` URLs through `appFetch`; never hard-code the backend hostname. In dev, `API_PROXY_TARGET` and `CF_ACCESS_JWT` in the git-ignored `.env.local` set the Vite proxy target and the Access cookie (README "Backend API"). The proxy is dev-only: never add auth tokens to app code or the build.
 - A shared per-session cache (`features/profile/api/profile-store.ts`) holds the profile; navbars show `ProfileNavRight` from `features/profile/index.ts`.
 
+## Dates and times
+
+- Use `date-fns` and `@date-fns/tz` through `shared/lib/dates.ts` (generic helpers, how dates are written, today in Oslo) and `shared/lib/times.ts` (Oslo time of day to UTC instants) and `features/reservations/lib/times.ts` (the times a reservation may have); never hand-write date arithmetic, DST, time zone code or month and weekday lists. Dates are `yyyy-MM-dd` strings, times are Oslo time (`Europe/Oslo`), and the API gets UTC instants. "Today" is always `todayInOslo()`, never the device's date. Dates are written by `formatDate`/`formatDateRange` (year only when it is not the current year). See the "Dates and time zones" gotcha in `README.md`.
+
 ## Icons
 
 - Use `lucide-react` only; import each icon by name (`import { House } from 'lucide-react'`). Never `import *` or look icons up by string, which breaks tree-shaking.
@@ -77,6 +84,7 @@ Group by feature, not by technical layer. Full rules in `README.md` ("Folder str
 
 - Before adding or changing any error, loading or confirmation UI, read "User feedback and errors" in `README.md` and follow it: inline errors where the problem is, toasts at `top` only for transient failures, modal alerts only for blocking cases, never show `ApiError.message`.
 - Error texts per `ApiError.code` live in the feature (`features/<name>/api/`); generic ones in `shared/`.
+- **One path for failed API calls.** API files turn a bad answer into `ApiRequestError { status, code }` with `ensureOk(response)` (`shared/lib/api-error.ts`). Callers run `classifyFailure(error)` (`session`, `forbidden`, `network` or `api`), then `handleCommonFailure(...)` (`shared/ui/failure-feedback.ts`), which reloads for login, shows the no-access alert or the network toast. A feature writes only what is its own: the `ApiError.code` to text mapping and where the text goes. Never write `instanceof SessionExpiredError`, `reloadForLogin()`, a `403` check or a failure toast in a feature; extend the shared helper if a case is missing.
 
 ## Adding a feature
 
@@ -90,6 +98,7 @@ Group by feature, not by technical layer. Full rules in `README.md` ("Folder str
 
 - **Confirm the plan before executing it.** Present the plan (decisions, files, approach) and wait for an explicit go before writing code. An earlier answer to a question is not a go.
 - **Confirm before every commit.** Show what will be committed (files and message) and wait for approval each time; approval for one commit does not cover the next.
+- **Peer review before asking to commit.** When a change is finished and `pnpm check` is green, start a separate review agent (Agent tool, fresh context, read-only: it must not edit files) for the uncommitted changes and for the commits on the branch that have not been reviewed yet. Give it only the scope (`git diff`, commit hashes) and where the rules are (`CLAUDE.md`, `README.md`, the plan in `.claude/plans/`); do not hand it your own conclusions. Ask it to flag generic helpers written inside a feature folder and duplicates of something already in `src/shared/lib/`. **Wait for its report** and do not continue other work meanwhile. Then check each finding yourself, fix the valid ones, run `pnpm check` again, and give the user a short summary: findings, what was fixed, and what was not fixed and why. Only then ask for approval to commit. Do not review the same commit twice.
 - Small, focused commits; end commit messages with the Co-Authored-By line. Never force push.
 - Match existing style. Do not reformat files you did not touch.
 - Check the library's current docs before configuring it; do not rely on memory.

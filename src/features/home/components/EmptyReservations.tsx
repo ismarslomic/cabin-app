@@ -5,7 +5,7 @@ import './EmptyReservations.css'
 
 // Shown instead of "Gjeldende besøk" when no one is at the cabin and nothing is booked.
 // It holds the reserve button and stretches to fill the page down to the year statistics.
-export default function EmptyReservations() {
+export default function EmptyReservations({ onReserve }: { onReserve: () => void }) {
   return (
     <Block strong inset className="empty-reservations">
       <CalendarX size={40} aria-hidden="true" />
@@ -13,7 +13,7 @@ export default function EmptyReservations() {
       <p className="placeholder-text">
         Du har ingen gjeldende eller kommende reservasjoner akkurat nå.
       </p>
-      <ReserveButton hasCurrent={false} hasNext={false} inCard />
+      <ReserveButton hasCurrent={false} hasNext={false} inCard onReserve={onReserve} />
     </Block>
   )
 }

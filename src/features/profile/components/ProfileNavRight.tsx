@@ -10,7 +10,7 @@ export default function ProfileNavRight() {
   return (
     <NavRight>
       <Link href="/profil/" aria-label="Profil" className="profile-nav-link">
-        <Avatar guestId={profile?.id} size={32} />
+        <Avatar avatarUrl={profile?.avatarUrl} size={32} />
       </Link>
     </NavRight>
   )

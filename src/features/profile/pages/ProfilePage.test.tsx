@@ -7,6 +7,7 @@ import App from '@/app/App.tsx'
 import { resetProfileStore } from '@/features/profile/api/profile-store.ts'
 import type { Profile } from '@/features/profile/api/types.ts'
 import { reloadForLogin } from '@/shared/lib/http.ts'
+import { resetFailureFeedback } from '@/shared/ui/failure-feedback.ts'
 
 vi.mock('@/shared/lib/http.ts', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/shared/lib/http.ts')>()),
@@ -72,6 +73,7 @@ describe('profile', () => {
   beforeEach(() => {
     vi.mocked(reloadForLogin).mockClear()
     resetProfileStore()
+    resetFailureFeedback()
   })
   afterEach(() => {
     window.history.replaceState(null, '', '/')
@@ -175,7 +177,11 @@ describe('profile', () => {
     await user.type(screen.getByDisplayValue('Kari'), 'x')
     await user.click(screen.getByRole('link', { name: 'Lagre' }))
 
-    expect(await screen.findAllByText('Du har ikke tilgang til appen.')).not.toHaveLength(0)
+    expect(await screen.findByText('Du har ikke tilgang til appen.')).toBeInTheDocument()
+    // Only the alert: no second copy of the text inline.
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    // Framework7 queues dialogs behind an open one, so close it for the tests that follow.
+    await user.click(screen.getByText('OK'))
   })
 
   it('resets the form to the latest profile when it changed elsewhere', async () => {
@@ -195,6 +201,30 @@ describe('profile', () => {
 
     expect(await screen.findByText(/Profilen ble endret et annet sted/)).toBeInTheDocument()
     expect(screen.getByDisplayValue('Kristin')).toBeInTheDocument()
+  })
+
+  it('can save again after the latest profile could not be fetched for lack of access', async () => {
+    let conflicted = false
+    stubApi({
+      me: () =>
+        conflicted
+          ? Response.json({ code: 'FORBIDDEN', message: 'x' }, { status: 403 })
+          : Response.json(profile),
+      update: () => {
+        conflicted = true
+        return Response.json({ code: 'VERSION_MISMATCH', message: 'x' }, { status: 412 })
+      },
+    })
+    const user = await openProfile()
+
+    await openEditPage(user)
+    await user.type(screen.getByDisplayValue('Kari'), 'x')
+    await user.click(screen.getByRole('link', { name: 'Lagre' }))
+    await user.click(await screen.findByText('OK', {}, { timeout: 3000 }))
+
+    await vi.waitFor(() => {
+      expect(screen.getByRole('link', { name: 'Lagre' })).not.toHaveClass('disabled')
+    })
   })
 
   it('shows an inline message when saving fails', async () => {

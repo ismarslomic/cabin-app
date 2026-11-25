@@ -1,7 +1,7 @@
 import { List, ListItem } from 'framework7-react'
 import AvatarStack from '@/features/home/components/AvatarStack.tsx'
 import type { ReservationGuest } from '@/features/home/api/stats-api.ts'
-import { formatDateRange, toIsoDate } from '@/features/home/format.ts'
+import { formatDateRange, todayInOslo } from '@/shared/lib/dates.ts'
 import './ReservationCard.css'
 
 interface ReservationCardProps {
@@ -19,8 +19,8 @@ interface ReservationCardProps {
 
 // Guests of the current reservation are dimmed when they are not at the cabin today; the next
 // reservation has not started, so none of its guests is.
-function dimDate(kind: ReservationCardProps['kind']): string | undefined {
-  return kind === 'current' ? toIsoDate(new Date()) : undefined
+function dimDate(kind: ReservationCardProps['kind'], today: string): string | undefined {
+  return kind === 'current' ? today : undefined
 }
 
 // One reservation: titled with its state, dates, colored status line and the guests' photos.
@@ -33,9 +33,10 @@ export default function ReservationCard({
   statusText,
   order,
 }: ReservationCardProps) {
+  const today = todayInOslo()
   return (
     <List strong inset mediaList className={`reservation-card reservation-card-${kind}`}>
-      <ListItem title={formatDateRange(startDate, endDate)}>
+      <ListItem title={formatDateRange(startDate, endDate, today)}>
         <span slot="header" className="reservation-heading">
           <span className="reservation-dot" aria-hidden="true" />
           {title}
@@ -45,7 +46,7 @@ export default function ReservationCard({
           {statusText}
         </span>
         <span slot="after">
-          <AvatarStack guests={guests} today={dimDate(kind)} />
+          <AvatarStack guests={guests} today={dimDate(kind, today)} />
         </span>
       </ListItem>
     </List>

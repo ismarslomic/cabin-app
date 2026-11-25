@@ -1,0 +1,153 @@
+import type { ReservationCreate } from '@/features/reservations/api/types.ts'
+import {
+  DEFAULT_ARRIVAL_TIME_OSLO,
+  DEFAULT_DEPARTURE_TIME_OSLO,
+} from '@/features/reservations/lib/times.ts'
+import { quickPicks } from '@/features/reservations/lib/period.ts'
+import { isDateWithin } from '@/shared/lib/dates.ts'
+import { osloToInstant } from '@/shared/lib/times.ts'
+
+export interface DraftPeriod {
+  startDate: string
+  endDate: string
+  arrivalTime: string
+  departureTime: string
+}
+
+/** The period a new reservation starts with: the coming weekend, with the default times. */
+export function initialPeriod(today: string): DraftPeriod {
+  const weekend = quickPicks(today)[0]
+  return {
+    startDate: weekend?.start ?? today,
+    endDate: weekend?.end ?? today,
+    arrivalTime: DEFAULT_ARRIVAL_TIME_OSLO,
+    departureTime: DEFAULT_DEPARTURE_TIME_OSLO,
+  }
+}
+
+export function isSamePeriod(a: DraftPeriod, b: DraftPeriod): boolean {
+  return (
+    a.startDate === b.startDate &&
+    a.endDate === b.endDate &&
+    a.arrivalTime === b.arrivalTime &&
+    a.departureTime === b.departureTime
+  )
+}
+
+/** A guest of the draft; `fromDate`/`toDate` are the guest's own days, null when with the group. */
+export interface DraftGuest {
+  guestId: string
+  fromDate: string | null
+  toDate: string | null
+}
+
+/**
+ * The guest with an own date that equals the reservation's first (arrival) or last (departure) day
+ * set back to null: the guest then follows the group, also if the period is changed later.
+ *
+ * @example
+ * normalizeGuestDates({ guestId: 'a', fromDate: '2026-11-27', toDate: '2026-11-28' }, period)
+ * // { guestId: 'a', fromDate: null, toDate: '2026-11-28' } when the period is 27 to 29 November
+ */
+export function normalizeGuestDates(
+  guest: DraftGuest,
+  period: Pick<DraftPeriod, 'startDate' | 'endDate'>,
+): DraftGuest {
+  return {
+    ...guest,
+    fromDate: guest.fromDate === period.startDate ? null : guest.fromDate,
+    toDate: guest.toDate === period.endDate ? null : guest.toDate,
+  }
+}
+
+/** Whether two guest lists have the same guests, in the same order, with the same own dates. */
+export function isSameGuests(a: DraftGuest[], b: DraftGuest[]): boolean {
+  return (
+    a.length === b.length &&
+    a.every((guest, index) => {
+      const other = b[index]
+      return (
+        other !== undefined &&
+        guest.guestId === other.guestId &&
+        guest.fromDate === other.fromDate &&
+        guest.toDate === other.toDate
+      )
+    })
+  )
+}
+
+/** The guest's own arrival if it is still inside the period, otherwise null (with the group). */
+function keepArrival(guest: DraftGuest, startDate: string, endDate: string): string | null {
+  const { fromDate } = guest
+  if (fromDate === null) return null
+  return isDateWithin(fromDate, startDate, endDate) ? fromDate : null
+}
+
+/**
+ * The guest's own departure if it is still inside the period and not before the arrival the guest
+ * keeps, otherwise null (with the group).
+ */
+function keepDeparture(
+  guest: DraftGuest,
+  arrival: string | null,
+  startDate: string,
+  endDate: string,
+): string | null {
+  const { toDate } = guest
+  if (toDate === null) return null
+  const isInsidePeriod = isDateWithin(toDate, startDate, endDate)
+  const isAfterArrival = arrival === null || toDate >= arrival
+  return isInsidePeriod && isAfterArrival ? toDate : null
+}
+
+/** The same guest object when nothing changed, so a caller can tell which guests were reset. */
+function reconcileGuest(guest: DraftGuest, startDate: string, endDate: string): DraftGuest {
+  const fromDate = keepArrival(guest, startDate, endDate)
+  const toDate = keepDeparture(guest, fromDate, startDate, endDate)
+  const unchanged = fromDate === guest.fromDate && toDate === guest.toDate
+  return unchanged ? guest : { ...guest, fromDate, toDate }
+}
+
+/**
+ * Keeps the guests' own dates that still fit the period and resets the others. `resetGuestIds` are
+ * the guests that had a date reset, for the note on the guest list. An own date that now equals the
+ * period's first or last day is the same as none (see `normalizeGuestDates`), but is not a reset.
+ */
+export function reconcileGuestDates(
+  guests: DraftGuest[],
+  startDate: string,
+  endDate: string,
+): { guests: DraftGuest[]; resetGuestIds: string[] } {
+  const reconciled = guests.map((guest) => reconcileGuest(guest, startDate, endDate))
+  const resetGuestIds = reconciled
+    .filter((guest, index) => guest !== guests[index])
+    .map((guest) => guest.guestId)
+  const period = { startDate, endDate }
+  return { guests: reconciled.map((guest) => normalizeGuestDates(guest, period)), resetGuestIds }
+}
+
+/** The request body. A guest date equal to the first or last day is the same as the group's. */
+export function buildCreateRequest(period: DraftPeriod, guests: DraftGuest[]): ReservationCreate {
+  return {
+    startTime: osloToInstant(period.startDate, period.arrivalTime),
+    endTime: osloToInstant(period.endDate, period.departureTime),
+    guests: guests.map((guest) => ({
+      guestId: guest.guestId,
+      fromDate: guest.fromDate === period.startDate ? null : guest.fromDate,
+      toDate: guest.toDate === period.endDate ? null : guest.toDate,
+    })),
+  }
+}
+
+/**
+ * The guests a new reservation starts with: every family guest and the current user, once each,
+ * in the order of `all` (sorted by first name).
+ */
+export function defaultGuests(
+  all: { id: string; isFamily: boolean }[],
+  currentUserId: string,
+): DraftGuest[] {
+  return all
+    .filter((guest) => guest.isFamily || guest.id === currentUserId)
+    .map((guest) => ({ guestId: guest.id, fromDate: null, toDate: null }))
+}

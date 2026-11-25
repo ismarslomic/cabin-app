@@ -1,6 +1,6 @@
 import { Avatar } from '@/features/profile/index.ts'
 import type { ReservationGuest } from '@/features/home/api/stats-api.ts'
-import { isAtCabin } from '@/features/home/format.ts'
+import { isAtCabin } from '@/features/reservations/index.ts'
 import './AvatarStack.css'
 
 const MAX_AVATARS = 4
@@ -24,7 +24,7 @@ export default function AvatarStack({
     <span className="avatar-stack" role="img" aria-label={`Gjester: ${names}`}>
       {shown.map((guest) => (
         <span key={guest.guestId} className={absent(guest) ? 'avatar-stack-absent' : undefined}>
-          <Avatar guestId={guest.guestId} size={32} />
+          <Avatar avatarUrl={guest.avatarUrl} size={32} />
         </span>
       ))}
       {hidden > 0 && <span className="avatar-stack-more">+{hidden}</span>}

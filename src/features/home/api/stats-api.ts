@@ -1,23 +1,14 @@
 import type { components } from '@/shared/api/schema.ts'
+import { ensureOk } from '@/shared/lib/api-error.ts'
 import { appFetch } from '@/shared/lib/http.ts'
 
 export type LiveStats = components['schemas']['LiveStats']
 export type CurrentYearStats = components['schemas']['CurrentYearStats']
 export type ReservationGuest = components['schemas']['LiveGuestStats']
 
-export class StatsApiError extends Error {
-  readonly status: number
-
-  constructor(message: string, status: number) {
-    super(message)
-    this.status = status
-    this.name = 'StatsApiError'
-  }
-}
-
 async function getJson<T>(url: string): Promise<T> {
   const response = await appFetch(url, { headers: { Accept: 'application/json' } })
-  if (!response.ok) throw new StatsApiError('Kunne ikke hente statistikken.', response.status)
+  await ensureOk(response)
   return (await response.json()) as T
 }
 

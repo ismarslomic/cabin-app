@@ -19,7 +19,7 @@ export default function ProfilePage() {
       {profile && (
         <>
           <Block className="text-align-center">
-            <Avatar guestId={profile.id} size={96} />
+            <Avatar avatarUrl={profile.avatarUrl} size={96} />
             <h2>
               {profile.firstName} {profile.lastName}
             </h2>

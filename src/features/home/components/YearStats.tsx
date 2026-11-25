@@ -2,7 +2,7 @@ import { Block, Card } from 'framework7-react'
 import { Car, Moon, Users } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { CurrentYearStats } from '@/features/home/api/stats-api.ts'
-import { formatKm } from '@/features/home/format.ts'
+import { formatKm } from '@/shared/lib/distance.ts'
 import './YearStats.css'
 
 function Stat({ icon: Icon, value, label }: { icon: LucideIcon; value: string; label: string }) {
