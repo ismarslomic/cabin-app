@@ -9,8 +9,8 @@ Input: <mockup, issue, spec; what is inspiration and what is binding>. <Constrai
 
 <Rules for this table. Delete this paragraph when the plan has no conflicting rows yet.> The Question column keeps the original question and the proposal made at the time; the Answer column is the decision and wins where they differ. A later row that changes an earlier one says so, and the earlier row gets "**Superseded in part by Qn:** ..." (or "Superseded by Qn") in the same step. Rows are numbered in the order they are decided and never renumbered; a follow-up uses `3b` or a new number that names the row it refines.
 
-| #   | Status | Question                                                        | Answer                      |
-| --- | ------ | --------------------------------------------------------------- | --------------------------- |
+| #   | Status | Question                                                         | Answer                        |
+| --- | ------ | ---------------------------------------------------------------- | ----------------------------- |
 | 1   | Open   | **Topic.** The question, the options and the recommended option. | The decision (empty if Open). |
 
 Status is `Open` or `Closed`. Ask the user the Open ones as short numbered questions; do not code on an Open row that the code depends on.
@@ -23,8 +23,8 @@ Facts found by reading the code, the API spec or the docs (endpoints, request sh
 
 Branch `<branch>`, <n> commits ahead of `main`, each with `pnpm check` green. Pushed: <no / PR #n>. Tree: <clean / dirty>. <n> tests.
 
-| Commit    | Content                      |
-| --------- | ---------------------------- |
+| Commit    | Content                        |
+| --------- | ------------------------------ |
 | `abc1234` | What the commit adds or fixes. |
 
 Peer review rounds run and what was fixed (one line).
@@ -39,6 +39,7 @@ What exists now, by folder. Update it when files move.
 2. Anything public (push, PR, release) is written "only when the user asks".
 
 **Optional follow-ups** (ask first):
+
 - ...
 
 **Out of scope:** ...
